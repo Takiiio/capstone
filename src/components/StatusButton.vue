@@ -12,20 +12,20 @@ import { computed } from 'vue';
 
 // props 정의
 const props = defineProps({
-  pet: {
+  status: {
     type: Object,
   }
 });
 
 const statusLabel = computed(() => {
-  if (props.pet?.status === 'y') return '완료';
-  if (props.pet?.status === 'n') return '미완료';
+  if (props.status === 'y') return '찾는중';
+  if (props.status === 'n') return '찾음';
   return '상태없음';
 });
 
 // CSS 클래스
 const statusClass = computed(() => {
-  return props.pet?.status === 'y' ? 'complete' : 'incomplete';
+  return props.status === 'y' ? 'incomplete' : 'complete'
 });
 
 </script>
@@ -38,10 +38,10 @@ const statusClass = computed(() => {
   font-size: 12px;
   color: white;
 }
-.status-inside.complete {
+.status-inside.incomplete {
   background-color: #51903B;
 }
-.status-inside.incomplete {
+.status-inside.complete {
   background-color: #D3D3D3;
 }
 </style>

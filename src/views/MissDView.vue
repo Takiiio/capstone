@@ -4,7 +4,7 @@
       <img
         v-if="sighting.photoUrl"
         :src="sighting.photoUrl"
-        alt="목격된 반려동물 사진"
+        alt="실종된 반려동물 사진"
         class="animal-photo"
       />
       <div v-else class="photo-placeholder">사진 준비 중</div>
@@ -140,7 +140,7 @@ const sighting = ref({
   location: '',
   description: '',
   contact: '',
-  status: ' '
+  status: ''
 })
 
 onMounted(() => {
@@ -211,14 +211,6 @@ store.setSightings(sightings);
 //클릭 -> 목격 정보 게시글
 const goToSightW = () => router.push({ name: 'sighting-write' })
 const goToSightD = (s) => router.push({ name: 'sighting-detail', params: { id: s.id } })
-
-// 찾은 상태
-defineProps({
-  pet: {
-    type: Object,
-    required: true
-  }
-});
 
 
 //트위터공유코드

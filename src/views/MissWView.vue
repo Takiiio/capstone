@@ -6,13 +6,12 @@
     <table class="report-table" border="1">
       <tbody>
         <tr>
-          <td class="report-table-td required">제목</td>
-          <td class="report-table-td-w">
+          <td rowspan="2" class="report-table-td required">제목</td>
+          <td rowspan="2" class="report-table-td-w">
             <input type="text" v-model="form.title" :class="{ 'input-error': isSubmitted && !form.title }" />
           </td>
-          <td rowspan="2" class="report-table-td required">연락처</td>
-          <td rowspan="2" class="report-table-td-w">
-            <input type="text" v-model="form.contact" :class="{ 'input-error': isSubmitted && !form.contact }" />
+          <td class="report-table-td required">연락처</td>
+          <td  class="report-table-td-w">
             <div class="radio-group">
               <label>
                 <input type="radio" name="contactPublic" value="public" v-model="form.contactPublic" />
@@ -26,8 +25,19 @@
           </td>
         </tr>
         <tr>
-          <td class="report-table-td">SNS 연동</td>
-          <td class="report-table-td-w"></td>
+          <td class="report-table-td required">찾는중/찾음</td>
+          <td  class="report-table-td-w">
+            <div class="radio-group">
+              <label>
+                <input type="radio" name="status" value="y" v-model="form.status" />
+                찾는중
+              </label>
+              <label>
+                <input type="radio" name="status" value="n" v-model="form.status" />
+                찾음
+              </label>
+            </div>
+          </td>
         </tr>
       </tbody>
     </table>
@@ -127,10 +137,10 @@ const selectedFile = ref(null)
 const previewImage = ref(null)
 
 const form = ref({
-  title: '', contact: '', contactPublic: 'public',
+  title: '', contactPublic: 'public',
   animalName: '', gender: '', age: '', weight: '', color: '',
   date: '', time: '', breed: '', location: '', radius: '',
-  warning: '', note: '', reward: ''
+  warning: '', note: '', reward: '', status: 'y'
 })
 
 const onFileChange = (e) => {
@@ -142,7 +152,7 @@ const onFileChange = (e) => {
 
 const handleSubmit = async () => {
   isSubmitted.value = true
-  const required = ['title', 'contact', 'animalName', 'date', 'location']
+  const required = ['title', 'contactPublic', 'animalName', 'date', 'location']
   const isValid = required.every(k => form.value[k]?.trim())
   if (!isValid) {
     alert("필수 항목을 모두 입력해주세요.")

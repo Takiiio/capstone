@@ -115,7 +115,7 @@ const filteredPets = computed(() => {
     })
     .filter(pet => {
       // 토글
-      return !incompleteOnly.value || pet.status === 'n'
+      return !incompleteOnly.value || pet.status === 'y'
     })
     .sort((a, b) => {
       // 날짜 정렬

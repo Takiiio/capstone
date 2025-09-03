@@ -20,7 +20,7 @@
         class="status-inside"
         :class="statusClass"
       >
-         {{ statusLabel }} 
+         {{ statusLabel }}
       </span>
 
       <!-- 텍스트 정보 -->
@@ -43,12 +43,12 @@ export default {
   computed: {
     // status 값을 한글 라벨로 변환
     statusLabel() {
-      if (this.pet.status === 'n') return '미완료'
-      if (this.pet.status === 'y') return '완료'
+      if (this.pet.status === 'y') return '찾는중'
+      if (this.pet.status === 'n') return '찾음'
       return '상태없음'
     },
     statusClass() {
-      return this.pet.status === 'n' ? 'incomplete' : 'complete'
+      return this.pet.status === 'y' ? 'incomplete' : 'complete'
     }
   },
   methods: {
