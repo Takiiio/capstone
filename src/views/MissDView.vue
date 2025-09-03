@@ -1,0 +1,524 @@
+<template>
+  <div class="detail-page" v-if="isLoaded">
+    <div class="photo-container">
+      <img
+        v-if="sighting.photoUrl"
+        :src="sighting.photoUrl"
+        alt="목격된 반려동물 사진"
+        class="animal-photo"
+      />
+      <div v-else class="photo-placeholder">사진 준비 중</div>
+
+      <div class="post-header">
+        <div style="display: flex;">
+          <!-- 상태(완료/미완료)를 색상 뱃지로 출력 -->
+          <div v-if="sighting">
+          <!-- 상태 뱃지 -->
+            <div>
+              <div>
+                <!-- sighting.status를 props로 넘김 -->
+                <StatusButton class="status-wrapper" :status="sighting.status" />
+              </div>
+            </div>
+          </div>
+          <h1 class="post-title">{{ sighting.title }}</h1>
+
+          <!-- 점 3개 버튼 -->
+          <div class="menu-wrapper">
+            <button class="menu-btn" @click="toggleMenu">⋮</button>
+            <div v-if="showMenu" class="menu-dropdown">
+              <button @click="editPost">수정</button>
+              <button @click="deletePost">삭제</button>
+            </div>
+          </div>
+        </div>
+
+        <p class="post-author">{{ sighting.authorNickname  || '작성자 미입력' }}</p>
+        <h1 class="post-gratuity" style="position: absolute; bottom: 0; margin-bottom: 1rem;">사례금 {{ sighting.reward || '없음' }}</h1>
+      </div>
+    </div>
+
+    <div class="info-wrapper">
+      <div class="info-card sighting-info">
+        <h2>동물 정보</h2>
+        <table class="info-table">
+          <tr>
+            <th>동물이름</th><td>{{ sighting.animalName }}</td>
+            <th>성별</th><td>{{ sighting.gender }}</td>
+          </tr>
+          <tr><th>품종</th><td colspan="3">{{ sighting.breed }}</td></tr>
+          <tr><th>특징</th><td colspan="3">{{ sighting.age }}</td></tr>
+        </table>
+      </div>
+
+      <div class="info-card sighting-info">
+        <h2>실종 정보</h2>
+        <table class="info-table">
+          <tr><th>실종일시</th><td>{{ sighting.date }}</td></tr>
+          <tr><th>실종장소</th><td>{{ sighting.location }}</td></tr>
+          <tr><th>예상반경</th><td>{{ sighting.description }}</td></tr>
+        </table>
+      </div>
+
+      <div class="info-card contact-info">
+        <h2>연락처</h2>
+          <p v-if="sighting.contact && sighting.contactPublic !== 'private'">{{ sighting.contact }}</p>
+          <p v-else class="no-contact">비공개</p>
+        <h2>SNS 공유</h2>
+        <div class="sns-share-box">
+          <!-- 트위터 공유 버튼 -->
+          <button @click="shareToTwitter" class="sns-icon-btn">
+            <img src="https://cdn-icons-png.flaticon.com/512/5968/5968958.png" width="20" height="20" alt="Twitter (X)" />
+            <span>X(트위터)</span>
+          </button>
+
+          <!-- 인스타그램 공유 버튼 -->
+          <button @click="shareToInstagram" class="sns-icon-btn">
+            <img src="https://cdn-icons-png.flaticon.com/512/2111/2111463.png" width="20" height="20" alt="Instagram" />
+            <span>인스타그램</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="detail-info" v-if="isLoaded">
+    <div>
+      <h2>동물 사진</h2>
+      <div><img :src="sighting.photoUrl || ''"></div>
+    </div>
+    <div>
+      <h2>장소 사진</h2>
+      <div><img src=""></div>
+    </div>
+
+
+    <div style="display: flex; margin: 1rem;">
+      <div>
+        <h2>실종 위치</h2>
+        <MapApiD />
+      </div>
+      <div class="sighting-list">
+        <div class="list-top">
+          <h2 class="list-title">목격 정보</h2>
+          <button type="button" @click="goToSightW">+</button>
+        </div>
+        <div v-for="(sighting, index) in sightings" :key="index" class="sighting-card"  @click="goToSightD(s)">
+          <h3 class="sighting-title">{{ sighting.title }}</h3>
+          <p class="sighting-time">{{ sighting.date }}</p>
+          <p class="sighting-location">
+            {{ sighting.location }}
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
+
+<script setup>
+import { ref, onMounted } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
+import { useLocationStore } from '@/stores/locationStore';
+import { doc, getDoc } from 'firebase/firestore'
+import { fbstore } from '../firebaseConfig';
+import MapApiD from '@/components/MapApiD.vue'
+import StatusButton from '@/components/StatusButton.vue';
+
+const store = useLocationStore();
+const isLoaded = ref(false);
+const showMenu = ref(false) // 점3개 메뉴 상태
+
+const router = useRouter()
+const route = useRoute()
+
+const sighting = ref({
+  photoUrl: '',
+  title: '',
+  authorNickname: '',
+  date: '',
+  location: '',
+  description: '',
+  contact: '',
+  status: ' '
+})
+
+onMounted(() => {
+  const { id } = route.params
+  console.log(`Fetching sighting id: ${id}`)
+  sighting.value = {
+    photoUrl: '',
+    title: '',
+    authorNickname: '',
+    date: '',
+    location: '',
+    description: '',
+    contact: '',
+    status: ''
+  }
+  isLoaded.value = true;
+  store.setAddress(sighting.value.location);
+})
+
+onMounted(async () => {
+  const { id } = route.params
+  const docRef = doc(fbstore, 'missingPosts', id)
+  const docSnap = await getDoc(docRef)
+  if (docSnap.exists()) {
+    sighting.value = docSnap.data()
+    isLoaded.value = true
+  } else {
+    alert('게시글을 찾을 수 없습니다.')
+    router.back()
+  }
+})
+
+const toggleMenu = () => {
+  showMenu.value = !showMenu.value
+}
+
+const editPost = () => {
+  alert('수정 페이지로 이동합니다. (임시 동작)')
+  showMenu.value = false
+}
+
+const deletePost = () => {
+  const confirmed = confirm('정말 삭제하시겠습니까?')
+  if (confirmed) {
+    alert('삭제되었습니다. (임시 동작)')
+    router.push({ name: 'missing-list' })
+  }
+  showMenu.value = false
+}
+
+
+
+const sightings = [
+  {
+    title: '목격했습니다',
+    date: '2025-03-29 16:00',
+    location: '성동구 왕십리로 222',
+  },
+  {
+    title: '○○건물 근처',
+    date: '2025-03-28 11:00',
+    location: '성동구 사근동 235-1',
+  },
+];
+
+store.setSightings(sightings);
+
+//클릭 -> 목격 정보 게시글
+const goToSightW = () => router.push({ name: 'sighting-write' })
+const goToSightD = (s) => router.push({ name: 'sighting-detail', params: { id: s.id } })
+
+// 찾은 상태
+defineProps({
+  pet: {
+    type: Object,
+    required: true
+  }
+});
+
+
+//트위터공유코드
+const shareToTwitter = () => {
+  const id = route.params.id
+  const title = sighting.value?.title || '분실 동물 신고'
+  const location = sighting.value?.location || ''
+  const reward = sighting.value?.reward ? `사례금: ${sighting.value.reward}원` : ''
+  const text = encodeURIComponent(`${title}\n ${location}\n${reward}`)
+  const url = encodeURIComponent(`http://localhost:8080/miss/${id}`)  // 배포 시 도메인 변경
+  const twitterUrl = `https://twitter.com/intent/tweet?text=${text}&url=${url}`
+
+  window.open(twitterUrl, '_blank')
+}
+
+//인스타공유코드
+const shareToInstagram = () => {
+  if (!sighting.value) {
+    alert('게시글 정보를 불러오지 못했습니다.')
+    return
+}
+
+  const shareText = `
+🐶 반려동물 실종 신고
+
+이름: ${sighting.value.animalName}
+품종: ${sighting.value.breed || '정보 없음'}
+날짜: ${sighting.value.date}
+시간: ${sighting.value.time}
+장소: ${sighting.value.location}
+
+💬 ${sighting.value.note || '특이사항 없음'}
+💰 사례금: ${sighting.value.reward || '없음'}
+
+📞 연락처: ${sighting.value.contact}
+  `.trim()
+
+  navigator.clipboard.writeText(shareText).then(() => {
+    alert('📋 공유 문구가 복사되었습니다! 인스타그램에 붙여넣기 하세요.')
+    window.open('https://www.instagram.com/', '_blank')
+  }).catch(() => {
+    alert('❌ 클립보드 복사 실패! 수동으로 복사해주세요.')
+  })
+}
+</script>
+
+<style scoped>
+.detail-page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 1rem;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: auto auto;
+  grid-template-areas:
+    "photo info"
+    "header info";
+  gap: 1.5rem;
+}
+
+.detail-info {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 1rem;
+  display: grid;
+  grid-template-rows: auto auto;
+  gap: 1.5rem;
+  position: relative;
+}
+
+.detail-info img{
+  width: 400px;
+  height: 300px;
+  background-color: white;
+  margin: 1rem 1rem;
+  border: none;
+  flex-shrink: 0;
+  }
+
+.photo-container {
+  grid-area: photo;
+}
+.animal-photo {
+  width: 100%;
+  border-radius: 8px;
+}
+.photo-placeholder {
+  width: 100%;
+  height: 300px;
+  background: #f5f5f5;
+  border: 1px dashed #ccc;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #999;
+  border-radius: 8px;
+}
+
+.post-header {
+  grid-area: header;
+  background: #fff;
+  border-radius: 8px;
+  position: relative;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+  padding: 1rem;
+  height: 200px;
+  --post-title-font: 1.1rem;
+  --post-author-font: 0.8rem;
+}
+.post-title {
+  font-size: var(--post-title-font);
+  color: #333;
+  margin-left: 1rem;
+}
+
+.post-gratuity {
+  margin: 0;
+  font-size: 1.5rem;
+  color: #333;
+}
+.post-author {
+  margin: 0.5rem 1rem 0;
+  font-size: var(--post-author-font);
+  color: #777;
+}
+
+.info-wrapper {
+  grid-area: info;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.info-card {
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+  padding: 1rem;
+}
+
+.sighting-info {
+  --sighting-header-font: 1.1rem;
+  --sighting-text-font: 0.8rem;
+}
+.sighting-info h2 {
+  font-size: var(--sighting-header-font);
+  margin-bottom: 0.75rem;
+}
+.sighting-info .info-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--sighting-text-font);
+}
+.sighting-info .info-table th,
+.sighting-info .info-table td {
+  padding: 0.7rem;
+  border-bottom: 1px solid #eee;
+}
+.sighting-info .info-table th {
+  background-color: #f5f5f5;
+  font-weight: bold;
+  width: 20%;
+}
+.sighting-info .info-table td {
+}
+
+.contact-info {
+  --contact-header-font: 1.1rem;
+  --contact-text-font: 0.8rem;
+}
+.contact-info h2{
+  font-size: var(--contact-header-font);
+  margin-bottom: 0.75rem;
+}
+
+.contact-info p {
+  font-size: var(--contact-text-font);
+  margin-bottom: 0.75rem;
+}
+
+.no-contact {
+  color: #999;
+  font-style: italic;
+}
+
+.sighting-list {
+  width: 300px;
+  padding: 1rem;
+  background: white;
+  border-radius: 10px;
+  border: 1px solid rgb(214, 214, 214);
+  margin-left: 1rem;
+}
+
+.list-top {
+  margin-bottom: 1rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.list-top button{
+  padding: 5px 10px;
+  background-color:white;
+  border-color:rgb(226, 226, 226);
+  border-radius: 0.4rem;
+  cursor: pointer;
+}
+
+.list-title {
+  font-size: 1.2rem;
+  font-weight: bold;
+}
+
+.sighting-card {
+  margin-bottom: 1rem;
+  padding: 0.8rem;
+  background:rgb(255, 255, 255);
+  border-radius: 8px;
+  border: 1px solid rgb(214, 214, 214);
+}
+
+.sighting-title {
+  font-weight: bold;
+  margin-bottom: 0.5rem;
+}
+
+.sighting-time {
+  flex: 1;
+  font-size: 0.9rem;
+  color: #666;
+}
+
+.sighting-location {
+  display: flex;
+  align-items: center;
+  font-size: 0.9rem;
+  color: #333;
+}
+
+.menu-wrapper {
+  position: absolute;
+  right: 0;
+  margin-right: 1rem;
+}
+.menu-btn {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  padding: 0 8px;
+}
+.menu-dropdown {
+  position: absolute;
+  top: 30px;
+  right: 0;
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  display: flex;
+  flex-direction: column;
+  z-index: 10;
+}
+.menu-dropdown button {
+  padding: 8px 12px;
+  background: none;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+}
+.menu-dropdown button:hover {
+  background: #f5f5f5;
+}
+
+.sns-share-box {
+  margin-top: 15px;
+  display: flex;
+  gap: 20px;
+}
+
+.sns-icon-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border: none;
+  background-color: white;
+  border-radius: 8px;
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  font-size: 14px;
+  transition: background-color 0.2s;
+}
+.sns-icon-btn:hover {
+  transform: scale(1.1);
+}
+
+.share-wrapper {
+  margin-top: 20px;
+  text-align: center;
+}
+</style>
