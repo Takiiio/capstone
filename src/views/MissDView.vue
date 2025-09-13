@@ -2,8 +2,8 @@
   <div class="detail-page" v-if="isLoaded">
     <div class="photo-container">
       <img
-        v-if="sighting.photoUrl"
-        :src="sighting.photoUrl"
+        v-if="missing.photoUrl"
+        :src="missing.photoUrl"
         alt="실종된 반려동물 사진"
         class="animal-photo"
       />
@@ -12,16 +12,16 @@
       <div class="post-header">
         <div style="display: flex;">
           <!-- 상태(완료/미완료)를 색상 뱃지로 출력 -->
-          <div v-if="sighting">
+          <div v-if="missing">
           <!-- 상태 뱃지 -->
             <div>
               <div>
-                <!-- sighting.status를 props로 넘김 -->
-                <StatusButton class="status-wrapper" :status="sighting.status" />
+                <!-- missing.status를 props로 넘김 -->
+                <StatusButton class="status-wrapper" :status="missing.status" />
               </div>
             </div>
           </div>
-          <h1 class="post-title">{{ sighting.title }}</h1>
+          <h1 class="post-title">{{ missing.title }}</h1>
 
           <!-- 점 3개 버튼 -->
           <div class="menu-wrapper">
@@ -33,8 +33,8 @@
           </div>
         </div>
 
-        <p class="post-author">{{ sighting.authorNickname  || '작성자 미입력' }}</p>
-        <h1 class="post-gratuity" style="position: absolute; bottom: 0; margin-bottom: 1rem;">사례금 {{ sighting.reward || '없음' }}</h1>
+        <p class="post-author">{{ missing.nickname || '작성자 미입력' }}</p>
+        <h1 class="post-gratuity" style="position: absolute; bottom: 0; margin-bottom: 1rem;">사례금 {{ missing.reward || '없음' }}</h1>
       </div>
     </div>
 
@@ -43,26 +43,26 @@
         <h2>동물 정보</h2>
         <table class="info-table">
           <tr>
-            <th>동물이름</th><td>{{ sighting.animalName }}</td>
-            <th>성별</th><td>{{ sighting.gender }}</td>
+            <th>동물이름</th><td>{{ missing.animalName }}</td>
+            <th>성별</th><td>{{ missing.gender }}</td>
           </tr>
-          <tr><th>품종</th><td colspan="3">{{ sighting.breed }}</td></tr>
-          <tr><th>특징</th><td colspan="3">{{ sighting.age }}</td></tr>
+          <tr><th>품종</th><td colspan="3">{{ missing.breed }}</td></tr>
+          <tr><th>특징</th><td colspan="3">{{ missing.age }}</td></tr>
         </table>
       </div>
 
       <div class="info-card sighting-info">
         <h2>실종 정보</h2>
         <table class="info-table">
-          <tr><th>실종일시</th><td>{{ sighting.date }}</td></tr>
-          <tr><th>실종장소</th><td>{{ sighting.location }}</td></tr>
-          <tr><th>예상반경</th><td>{{ sighting.description }}</td></tr>
+          <tr><th>실종일시</th><td>{{ missing.date }}</td></tr>
+          <tr><th>실종장소</th><td>{{ missing.location }}</td></tr>
+          <tr><th>예상반경</th><td>{{ missing.radius }}</td></tr>
         </table>
       </div>
 
       <div class="info-card contact-info">
         <h2>연락처</h2>
-          <p v-if="sighting.contact && sighting.contactPublic !== 'private'">{{ sighting.contact }}</p>
+          <p v-if="missing.contact || missing.contactPublic !== 'private'">{{ missing.contact }}</p>
           <p v-else class="no-contact">비공개</p>
         <h2>SNS 공유</h2>
         <div class="sns-share-box">
@@ -85,7 +85,7 @@
   <div class="detail-info" v-if="isLoaded">
     <div>
       <h2>동물 사진</h2>
-      <div><img :src="sighting.photoUrl || ''"></div>
+      <div><img :src="missing.photoUrl || ''"></div>
     </div>
     <div>
       <h2>장소 사진</h2>
@@ -104,10 +104,10 @@
           <button type="button" @click="goToSightW">+</button>
         </div>
         <div v-for="(sighting, index) in sightings" :key="index" class="sighting-card"  @click="goToSightD(s)">
-          <h3 class="sighting-title">{{ sighting.title }}</h3>
-          <p class="sighting-time">{{ sighting.date }}</p>
+          <h3 class="sighting-title">{{ sightings.title }}</h3>
+          <p class="sighting-time">{{ sightings.date }}</p>
           <p class="sighting-location">
-            {{ sighting.location }}
+            {{ sightings.location }}
           </p>
         </div>
       </div>
@@ -132,41 +132,44 @@ const showMenu = ref(false) // 점3개 메뉴 상태
 const router = useRouter()
 const route = useRoute()
 
-const sighting = ref({
+const missing = ref({
   photoUrl: '',
   title: '',
-  authorNickname: '',
+  nickname: '',
   date: '',
   location: '',
-  description: '',
-  contact: '',
-  status: ''
-})
-
-onMounted(() => {
-  const { id } = route.params
-  console.log(`Fetching sighting id: ${id}`)
-  sighting.value = {
-    photoUrl: '',
-    title: '',
-    authorNickname: '',
-    date: '',
-    location: '',
-    description: '',
-    contact: '',
-    status: ''
-  }
-  isLoaded.value = true;
-  store.setAddress(sighting.value.location);
+  radius: '',
+  status: '',
+  breed: ''
 })
 
 onMounted(async () => {
   const { id } = route.params
+  
   const docRef = doc(fbstore, 'missingPosts', id)
   const docSnap = await getDoc(docRef)
+  
   if (docSnap.exists()) {
-    sighting.value = docSnap.data()
+    const postData = docSnap.data()
+    missing.value = postData
+
+
+    store.setAddress(postData.location || '');
+
+    // uid(authorId) 가져오기
+    if (postData.uid) {
+      const userRef = doc(fbstore, 'users', postData.uid)
+      const userSnap = await getDoc(userRef)
+      if (userSnap.exists()) {
+        missing.value.nickname = userSnap.data().nickname
+        missing.value.contact = userSnap.data().phone
+      } else {
+        missing.value.nickname = '알 수 없음'
+      }
+    }
+
     isLoaded.value = true
+
   } else {
     alert('게시글을 찾을 수 없습니다.')
     router.back()
@@ -216,9 +219,9 @@ const goToSightD = (s) => router.push({ name: 'sighting-detail', params: { id: s
 //트위터공유코드
 const shareToTwitter = () => {
   const id = route.params.id
-  const title = sighting.value?.title || '분실 동물 신고'
-  const location = sighting.value?.location || ''
-  const reward = sighting.value?.reward ? `사례금: ${sighting.value.reward}원` : ''
+  const title = missing.value?.title || '분실 동물 신고'
+  const location = missing.value?.location || ''
+  const reward = missing.value?.reward ? `사례금: ${missing.value.reward}원` : ''
   const text = encodeURIComponent(`${title}\n ${location}\n${reward}`)
   const url = encodeURIComponent(`http://localhost:8080/miss/${id}`)  // 배포 시 도메인 변경
   const twitterUrl = `https://twitter.com/intent/tweet?text=${text}&url=${url}`
@@ -228,7 +231,7 @@ const shareToTwitter = () => {
 
 //인스타공유코드
 const shareToInstagram = () => {
-  if (!sighting.value) {
+  if (!missing.value) {
     alert('게시글 정보를 불러오지 못했습니다.')
     return
 }
@@ -236,16 +239,16 @@ const shareToInstagram = () => {
   const shareText = `
 🐶 반려동물 실종 신고
 
-이름: ${sighting.value.animalName}
-품종: ${sighting.value.breed || '정보 없음'}
-날짜: ${sighting.value.date}
-시간: ${sighting.value.time}
-장소: ${sighting.value.location}
+이름: ${missing.value.animalName}
+품종: ${missing.value.breed || '정보 없음'}
+날짜: ${missing.value.date}
+시간: ${missing.value.time}
+장소: ${missing.value.location}
 
-💬 ${sighting.value.note || '특이사항 없음'}
-💰 사례금: ${sighting.value.reward || '없음'}
+💬 ${missing.value.note || '특이사항 없음'}
+💰 사례금: ${missing.value.reward || '없음'}
 
-📞 연락처: ${sighting.value.contact}
+📞 연락처: ${missing.value.contact}
   `.trim()
 
   navigator.clipboard.writeText(shareText).then(() => {

@@ -1,6 +1,6 @@
 <script setup>
 /* global kakao */
-import { ref } from 'vue';
+import { ref, watch } from 'vue';
 import { KakaoMap, KakaoMapMarker, KakaoMapCustomOverlay } from 'vue3-kakao-maps';
 import { useLocationStore } from '@/stores/locationStore';
 
@@ -45,17 +45,30 @@ const onLoadKakaoMap = (map) => {
   const geocoder = new kakao.maps.services.Geocoder();
 
   // 실종 장소 마커
-  if (store.address) {
-    geocoder.addressSearch(store.address, (result, status) => {
-      if (status === kakao.maps.services.Status.OK) {
-        const lat = parseFloat(result[0].y);
-        const lng = parseFloat(result[0].x);
-        singleMarker.value = { lat, lng };
-        bounds.extend(new kakao.maps.LatLng(lat, lng));
-        map.setBounds(bounds);
-      }
-    });
-  }
+watch(
+    () => store.location,
+    (newLocation) => {
+      if (!newLocation) return;
+      console.log("지도에 찍을 주소:", newLocation);
+
+      geocoder.addressSearch(newLocation, (result, status) => {
+        if (status === kakao.maps.services.Status.OK) {
+          const lat = parseFloat(result[0].y);
+          const lng = parseFloat(result[0].x);
+          const position = new kakao.maps.LatLng(lat, lng);
+
+          new kakao.maps.Marker({
+            map: map,
+            position: position
+          });
+
+          bounds.extend(position);
+          map.setBounds(bounds);
+        }
+      });
+    },
+    { immediate: true } // 처음 값 있으면 바로 실행
+  )
 
   // sightings 마커들
   store.sightings.forEach((sighting, index) => {
