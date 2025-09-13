@@ -24,11 +24,13 @@
           <h1 class="post-title">{{ missing.title }}</h1>
 
           <!-- 점 3개 버튼 -->
-          <div class="menu-wrapper">
-            <button class="menu-btn" @click="toggleMenu">⋮</button>
-            <div v-if="showMenu" class="menu-dropdown">
-              <button @click="editPost">수정</button>
-              <button @click="deletePost">삭제</button>
+          <div v-if="missing.uid === currentUid">
+            <div class="menu-wrapper">
+              <button class="menu-btn" @click="toggleMenu">⋮</button>
+              <div v-if="showMenu" class="menu-dropdown">
+                <button @click="editPost">수정</button>
+                <button @click="deletePost">삭제</button>
+              </div>
             </div>
           </div>
         </div>
@@ -122,6 +124,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { useLocationStore } from '@/stores/locationStore';
 import { doc, getDoc } from 'firebase/firestore'
 import { fbstore } from '../firebaseConfig';
+import { getAuth } from "firebase/auth"
 import MapApiD from '@/components/MapApiD.vue'
 import StatusButton from '@/components/StatusButton.vue';
 
@@ -131,6 +134,9 @@ const showMenu = ref(false) // 점3개 메뉴 상태
 
 const router = useRouter()
 const route = useRoute()
+
+const currentUid = ref(null)
+ 
 
 const missing = ref({
   photoUrl: '',
@@ -179,6 +185,11 @@ onMounted(async () => {
 const toggleMenu = () => {
   showMenu.value = !showMenu.value
 }
+
+onMounted(() => {
+  const auth = getAuth()
+  currentUid.value = auth.currentUser?.uid || null
+})
 
 const editPost = () => {
   alert('수정 페이지로 이동합니다. (임시 동작)')
