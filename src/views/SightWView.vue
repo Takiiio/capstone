@@ -8,26 +8,22 @@
         <tr>
           <td class="report-table-td">제목</td>
           <td class="report-table-td-w">
-            <input v-model="title" type="text" placeholder="제목" required />
+            <input type="text" v-model="form.title" :class="{ 'input-error': isSubmitted && !form.title }" />
           </td>
-          <td rowspan="2" class="report-table-td">연락처</td>
-          <td rowspan="2" class="report-table-td-w">
-            <input v-model="phoneno" type="text" placeholder="연락처" />
+          <td class="report-table-td">연락처</td>
+          <td class="report-table-td-w">
+            <!-- <input v-model="phoneno" type="text" placeholder="연락처" /> -->
             <div class="radio-group">
               <label>
-                <input type="radio" name="contactPublic" value="public" />
+                <input type="radio" name="contactPublic" value="public" v-model="form.contactPublic"/>
                 연락처 공개
               </label>
               <label>
-                <input type="radio" name="contactPublic" value="private" />
+                <input type="radio" name="contactPublic" value="private" v-model="form.contactPublic"/>
                 연락처 비공개
               </label>
             </div>
           </td>
-        </tr>
-        <tr>
-          <td class="report-table-td">SNS 연동</td>
-          <td class="report-table-td-w"></td>
         </tr>
       </tbody>
     </table>
@@ -38,25 +34,25 @@
         <tr>
           <td class="report-table-td">사진</td>
           <td class="report-table-td-w">
-            <input type="file" @change="handleFileChange" accept="image/*" required />
+            <input type="file" @change="onFileChange" accept="image/*" required />
           </td>
           <td class="report-table-td">목격 날짜</td>
           <td class="report-table-td-w">
             <div class="datetime-group">
-              <input type="date" v-model="date" required />
-              <input type="time" v-model="time" required />
+              <input type="date" v-model="form.date" :class="{ 'input-error': isSubmitted && !form.title }" />
+              <input type="time" v-model="form.time" :class="{ 'input-error': isSubmitted && !form.title }" />
             </div>
           </td>
         </tr>
         <tr>
           <td class="report-table-td">목격 위치</td>
           <td class="report-table-td-w">
-            <input type="text" placeholder="목격 위치" v-model="address" required />
-            <MapApiW v-model="address" />
+            <input type="text" placeholder="목격 위치" v-model="form.location" :class="{ 'input-error': isSubmitted && !form.title }"/>
+            <MapApiW v-model="form.location" />
           </td>
           <td class="report-table-td">내용</td>
           <td class="report-table-td-w">
-            <textarea placeholder="목격 내용을 입력하세요" v-model="content"></textarea>
+            <textarea placeholder="목격 내용을 입력하세요" v-model="form.content"></textarea>
           </td>
         </tr>
       </tbody>
@@ -71,39 +67,74 @@
 
 <script setup>
 import { ref } from 'vue'
-import { useRouter } from 'vue-router'
-import { fbstore } from '../firebaseConfig';
+import { useRouter, useRoute } from 'vue-router'
+import { fbstore, storage } from '../firebaseConfig';
 import { collection, addDoc } from 'firebase/firestore'
+import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage'
+import { getAuth } from 'firebase/auth'
+import MapApiW from '@/components/MapApiW.vue'
 
 const router = useRouter()
+const route = useRoute()
 
-const title = ref('');
-const phoneno = ref('');
-const contactPublic = ref('public');
-const date = ref('');
-const time = ref('');
-const address = ref('');
-const content = ref('');
+const form = ref({
+  title: '', contactPublic: 'public',
+  date: '', time: '', location: '', content:''
+})
 
-const handleSubmit = async () => {
-  try {
-    const docRef = await addDoc(collection(fbstore, "sightPosts"), {
-      title: title.value,
-      phoneno: phoneno.value,
-      contactPublic: contactPublic.value,
-      date: date.value,
-      time: time.value,
-      address: address.value,
-      content: content.value,
-      createdAt: new Date()
-    })
+const isSubmitted = ref(false)
+const selectedFile = ref(null)
+const previewImage = ref(null)
 
-    // ✅ 성공 시 디테일 페이지로 이동
-    router.push({ name: 'sighting-detail', params: { id: docRef.id } })
-  } catch (error) {
-    console.error("작성 중 오류 발생:", error)
+const onFileChange = (e) => {
+  if (e.target.files.length > 0) {
+    selectedFile.value = e.target.files[0]
+    previewImage.value = URL.createObjectURL(selectedFile.value)
   }
 }
+
+const handleSubmit = async () => {
+  isSubmitted.value = true
+  const required = ['title', 'contactPublic', 'date', 'location']
+  const isValid = required.every(k => form.value[k]?.trim())
+  if (!isValid) {
+    alert("필수 항목을 모두 입력해주세요.")
+    return
+  }
+  try {
+    const auth = getAuth()
+    const user = auth.currentUser
+    if (!user) {
+      alert("로그인이 필요합니다")
+      return
+    }
+    let photoUrl = ''
+    if (selectedFile.value) {
+      const fileRef = storageRef(storage, `sightPosts/${Date.now()}_${selectedFile.value.name}`)
+      await uploadBytes(fileRef, selectedFile.value)
+      photoUrl = await getDownloadURL(fileRef)
+    }
+    const postData = {
+      ...form.value,
+      photoUrl,
+      uid: user.uid,
+      missingId: route.params.id, 
+      createdAt: new Date()
+    }
+    const docRef = await addDoc(collection(fbstore, 'sightPosts'), postData)
+    router.push({ name: 'sighting-detail', params: { id: docRef.id } })
+  } catch (err) {
+    console.error("등록 실패:", err)
+    alert("등록 중 오류가 발생했습니다.")
+  }
+}
+
+    // ✅ 성공 시 디테일 페이지로 이동
+  //   router.push({ name: 'sighting-detail', params: { id: docRef.id } })
+  // } catch (error) {
+  //   console.error("작성 중 오류 발생:", error)
+  // }
+// }
 </script>
 
 <style scoped>

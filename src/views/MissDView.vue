@@ -103,14 +103,12 @@
       <div class="sighting-list">
         <div class="list-top">
           <h2 class="list-title">목격 정보</h2>
-          <button type="button" @click="goToSightW">+</button>
+          <button type="button" @click="goToSightW(missing.id)">+</button>
         </div>
-        <div v-for="(sighting, index) in sightings" :key="index" class="sighting-card"  @click="goToSightD(s)">
+        <div v-for="sightingD in sightings" :key=sightingD.id class="sighting-card"  @click="goToSightD(s)">
           <h3 class="sighting-title">{{ sightings.title }}</h3>
           <p class="sighting-time">{{ sightings.date }}</p>
-          <p class="sighting-location">
-            {{ sightings.location }}
-          </p>
+          <p class="sighting-location"> {{ sightings.location }} </p>
         </div>
       </div>
     </div>
@@ -122,7 +120,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useLocationStore } from '@/stores/locationStore';
-import { doc, getDoc } from 'firebase/firestore'
+import { doc, getDoc, collection, getDocs, query, where } from 'firebase/firestore'
 import { fbstore } from '../firebaseConfig';
 import { getAuth } from "firebase/auth"
 import MapApiD from '@/components/MapApiD.vue'
@@ -135,8 +133,9 @@ const showMenu = ref(false) // 점3개 메뉴 상태
 const router = useRouter()
 const route = useRoute()
 
+const sightings = ref([])
+
 const currentUid = ref(null)
- 
 
 const missing = ref({
   photoUrl: '',
@@ -158,8 +157,7 @@ onMounted(async () => {
   if (docSnap.exists()) {
     const postData = docSnap.data()
     missing.value = postData
-
-
+    
     store.setAddress(postData.location || '');
 
     // uid(authorId) 가져오기
@@ -206,24 +204,29 @@ const deletePost = () => {
 }
 
 
+onMounted(async () => {
+  try {
+    const missingId = route.params.id   // 현재 보고 있는 실종 글 id
+    const q = query(
+      collection(fbstore, 'sightingPosts'),
+      where('missingId', '==', missingId)
+    )
+    const snapshot = await getDocs(q)
 
-const sightings = [
-  {
-    title: '목격했습니다',
-    date: '2025-03-29 16:00',
-    location: '성동구 왕십리로 222',
-  },
-  {
-    title: '○○건물 근처',
-    date: '2025-03-28 11:00',
-    location: '성동구 사근동 235-1',
-  },
-];
+    sightings.value = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }))
+    
+  } catch (err) {
+    console.error('sightingPosts 불러오기 실패:', err)
+  }
+})
 
-store.setSightings(sightings);
+const goToSightW = (missingId) => {
+  router.push({ name: 'sighting-write', params: { id: missingId } })
+}
 
-//클릭 -> 목격 정보 게시글
-const goToSightW = () => router.push({ name: 'sighting-write' })
 const goToSightD = (s) => router.push({ name: 'sighting-detail', params: { id: s.id } })
 
 

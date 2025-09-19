@@ -56,7 +56,7 @@ const routes = [
     component: () => import('../views/MissDView.vue') 
   },
   {
-    path: '/sighting-write',
+    path: '/sighting-write/:id',
     name: 'sighting-write',
     component: () => import('../views/SightWView.vue') 
   },

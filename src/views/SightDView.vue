@@ -21,7 +21,7 @@
         <h2>목격 정보</h2>
         <table class="info-table">
           <tr><th>목격일시</th><td>{{ sighting.date }} {{ sighting.time }}</td></tr>
-          <tr><th>목격장소</th><td>{{ sighting.address }}</td></tr>
+          <tr><th>목격장소</th><td>{{ sighting.location }}</td></tr>
           <tr><th>내용</th><td>{{ sighting.content }}</td></tr>
         </table>
       </div>
@@ -56,8 +56,11 @@
 import { ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { doc, getDoc } from 'firebase/firestore'
+import { useLocationStore } from '@/stores/locationStore';
 import { fbstore } from '../firebaseConfig';
 import MapApiD from '@/components/MapApiD.vue'
+
+const store = useLocationStore();
 
 const route = useRoute()
 const sighting = ref({
@@ -65,7 +68,6 @@ const sighting = ref({
   date: '',
   time: '',
   address: '',
-  content: '',
   imageUrl: '',
   phoneno: '',
   contactPublic: 'private'
@@ -77,7 +79,10 @@ onMounted(async () => {
   const docSnap = await getDoc(docRef)
 
   if (docSnap.exists()) {
-    sighting.value = docSnap.data()
+    const postData = docSnap.data()
+    sighting.value = postData
+    
+    store.setAddress(postData.location || '');
   } else {
     console.warn('문서를 찾을 수 없습니다.')
   }
