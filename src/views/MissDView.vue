@@ -56,7 +56,7 @@
       <div class="info-card sighting-info">
         <h2>실종 정보</h2>
         <table class="info-table">
-          <tr><th>실종일시</th><td>{{ missing.date }}</td></tr>
+          <tr><th>실종일시</th><td>{{ missing.date }} {{ missing.time }}</td></tr>
           <tr><th>실종장소</th><td>{{ missing.location }}</td></tr>
           <tr><th>예상반경</th><td>{{ missing.radius }}</td></tr>
         </table>
@@ -158,7 +158,7 @@ onMounted(async () => {
     const postData = docSnap.data()
     missing.value = postData
     
-    store.setAddress(postData.location || '');
+    store.setMissingAddress(postData.location || '');
 
     // uid(authorId) 가져오기
     if (postData.uid) {

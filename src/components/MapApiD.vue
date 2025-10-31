@@ -46,7 +46,7 @@ const onLoadKakaoMap = (map) => {
 
   // 실종 장소 마커
 watch(
-    () => store.location,
+    () => store.missingLocation,
     (newLocation) => {
       if (!newLocation) return;
       console.log("지도에 찍을 주소:", newLocation);
@@ -57,31 +57,31 @@ watch(
           const lng = parseFloat(result[0].x);
           const position = new kakao.maps.LatLng(lat, lng);
 
-          const marker = new kakao.maps.Marker({
+          new kakao.maps.Marker({
             map: map,
             position: position
           });
 
-          // ✅ 실종 위치 텍스트 인포윈도우
-        const info = new kakao.maps.InfoWindow({
-          content: `
-            <div style="
-              padding:6px 10px;
-              font-size:13px;
-              font-weight:600;
-              background:white;
-              border:1px solid #999;
-              border-radius:6px;
-              box-shadow:0 1px 4px rgba(0,0,0,0.2);
-              ">
-              실종 위치
-            </div>
-          `,
-          removable: false, // 닫기버튼 X
-        });
+        const label = document.createElement("div");
+        label.innerHTML = "실종 위치";
+        label.style.cssText = `
+          background: #FFB1B1;
+          color: #fff;
+          font-size: 16px;
+          font-weight: 500;
+          text-align: center;
+          border-radius: 4px;
+          padding: 5px 10px;
+          white-space: nowrap;
+          transform: translateY(-40px); /* 마커 위쪽으로 띄움 */
+        `;
 
-        // 🔹 항상 표시되도록 open()
-        info.open(map, marker);
+        new kakao.maps.CustomOverlay({
+          map,
+          position,
+          content: label,
+          yAnchor: 1,
+        });
 
           bounds.extend(position);
           map.setBounds(bounds);
@@ -90,6 +90,51 @@ watch(
     },
     { immediate: true } // 처음 값 있으면 바로 실행
   )
+
+  watch(
+    () => store.sightingLocation,
+    (loc) => {
+      if (!loc) return;
+      geocoder.addressSearch(loc, (result, status) => {
+        if (status === kakao.maps.services.Status.OK) {
+          const lat = parseFloat(result[0].y);
+          const lng = parseFloat(result[0].x);
+          const position = new kakao.maps.LatLng(lat, lng);
+
+          // 목격 마커
+          new kakao.maps.Marker({ map, position });
+
+          // 목격 라벨
+          const label = document.createElement("div");
+          label.innerText = "목격 위치";
+          label.style.cssText = `
+            background: #2d7f50;
+            color: #fff;
+            font-size: 16px;
+            font-weight: 500;
+            text-align: center;
+            border-radius: 4px;
+            padding: 5px 10px;
+            transform: translateY(-40px);
+          `;
+
+          new kakao.maps.CustomOverlay({
+            map,
+            position,
+            content: label,
+            yAnchor: 1,
+          });
+
+          bounds.extend(position);
+          map.setBounds(bounds);
+        }
+      });
+    },
+    { immediate: true }
+  );
+
+
+  // 목격 마커
 
   // sightings 마커들
   store.sightings.forEach((sighting, index) => {

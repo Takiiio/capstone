@@ -39,9 +39,9 @@ const statusClass = computed(() => {
   color: white;
 }
 .status-inside.incomplete {
-  background-color: #51903B;
+  background-color: #FFB1B1;
 }
 .status-inside.complete {
-  background-color: #D3D3D3;
+  background-color: #51903B;
 }
 </style>

@@ -7,8 +7,11 @@ export const useLocationStore = defineStore('location', {
     sightings: []     // 목격 정보 리스트
   }),
   actions: {
-    setAddress(newAddress) {
-      this.location = newAddress;
+    setMissingAddress(addr) {
+      this.missingLocation = addr;
+    },
+    setSightingAddress(addr) {
+      this.sightingLocation = addr;
     },
     setSightings(data) {
       this.sightings = data;

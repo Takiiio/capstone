@@ -70,7 +70,8 @@ const sighting = ref({
   address: '',
   imageUrl: '',
   phoneno: '',
-  contactPublic: 'private'
+  contactPublic: 'private',
+  missingId: ''
 })
 
 onMounted(async () => {
@@ -82,7 +83,17 @@ onMounted(async () => {
     const postData = docSnap.data()
     sighting.value = postData
     
-    store.setAddress(postData.location || '');
+    store.setSightingAddress(postData.location || '');
+    
+    // ✅ 연결된 실종 위치 불러오기
+    if (postData.missingId) {
+      const missingRef = doc(fbstore, 'missingPosts', postData.missingId);
+      const missingSnap = await getDoc(missingRef);
+      if (missingSnap.exists()) {
+        const missingData = missingSnap.data();
+        store.setMissingAddress(missingData.location || '');
+      }
+    }
   } else {
     console.warn('문서를 찾을 수 없습니다.')
   }

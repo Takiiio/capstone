@@ -10,7 +10,7 @@
     <h2>최근 실종 동물</h2>
       <!-- <button @click="prev" class="card-btn">&lt;</button> -->
         <div class="pet-card">
-          <img :src="recentPost.imageUrl" alt="발견 동물" class="pet-photo"/>
+          <img :src="recentPost.photoUrl" alt="발견 동물" class="pet-photo"/>
             <div class="pet-card-info">
               <table>
                 <tr>
@@ -57,6 +57,7 @@ onMounted(async () => {
     if (!querySnapshot.empty) {
       const doc = querySnapshot.docs[0];
       recentPost.value = { id: doc.id, ...doc.data() };
+
     }
   } catch (error) {
     console.error("최근 게시글 불러오기 오류:", error);

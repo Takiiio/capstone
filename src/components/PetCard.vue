@@ -3,9 +3,9 @@
   <div v-if="pet" class="pet-card" @click="handleClick">
 
     <!-- ✅ 이미지 유무에 따라 조건부 표시 -->
-    <div v-if="pet.image" class="pet-image-wrapper">
+    <div v-if="pet.photoUrl" class="pet-image-wrapper">
       <!-- 이미지가 있을 경우 표시 -->
-      <img :src="pet.image" alt="동물 사진" class="pet-image" />
+      <img :src="pet.photoUrl" alt="동물 사진" class="pet-image" />
     </div>
 
     <div v-else class="pet-placeholder">
@@ -77,18 +77,17 @@ export default {
 
 .pet-image-wrapper {
   width:100%;
-  height:180px;
+  height:220px;
 }
 .pet-image {
-  width: 180px;
-  height: 200px;
-  object-fit: cover;
+  width:100%;
+  height:220px;
 }
 
 /* ✅ 이미지 없을 때 빈칸 스타일 */
 .pet-placeholder {
-  width: 100%;
-  height: 220px;
+  width:100%;
+  height:220px;
   background-color: #ddd;
   display: flex;
   flex-direction: column;
@@ -121,9 +120,9 @@ export default {
   color: white;
 }
 .status-inside.complete {
-  background-color: #D3D3D3;
+  background-color: #51903B;
 }
 .status-inside.incomplete {
-  background-color: #51903B;
+  background-color: #FFB1B1;
 }
 </style>
