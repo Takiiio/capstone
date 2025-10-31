@@ -57,10 +57,31 @@ watch(
           const lng = parseFloat(result[0].x);
           const position = new kakao.maps.LatLng(lat, lng);
 
-          new kakao.maps.Marker({
+          const marker = new kakao.maps.Marker({
             map: map,
             position: position
           });
+
+          // ✅ 실종 위치 텍스트 인포윈도우
+        const info = new kakao.maps.InfoWindow({
+          content: `
+            <div style="
+              padding:6px 10px;
+              font-size:13px;
+              font-weight:600;
+              background:white;
+              border:1px solid #999;
+              border-radius:6px;
+              box-shadow:0 1px 4px rgba(0,0,0,0.2);
+              ">
+              실종 위치
+            </div>
+          `,
+          removable: false, // 닫기버튼 X
+        });
+
+        // 🔹 항상 표시되도록 open()
+        info.open(map, marker);
 
           bounds.extend(position);
           map.setBounds(bounds);

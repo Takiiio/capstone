@@ -4,42 +4,80 @@
         <h2>LOGO</h2>
       </div>
     </section>
-    <section class="pet">
-      <button @click="prev" class="card-btn">&lt;</button>
+
+  
+    <section class="pet"  v-if="recentPost">
+    <h2>최근 실종 동물</h2>
+      <!-- <button @click="prev" class="card-btn">&lt;</button> -->
         <div class="pet-card">
-          <img :src="pet.image" alt="발견 동물" class="pet-photo"/>
+          <img :src="recentPost.imageUrl" alt="발견 동물" class="pet-photo"/>
             <div class="pet-card-info">
-              <h3>발견 동물</h3>
-              <p>발견 장소: {{ pet.location }}</p>
-              <p>발견 일시: {{ pet.datetime }}</p>
-              <p>견종: {{ pet.breed }}</p>
-              <p>성별: {{ pet.gender }}</p>
-              <p>특징: {{ pet.features }}</p>
-              <button class="detail-btn">상세보기</button>
+              <table>
+                <tr>
+                  <td>실종 장소 &nbsp; </td>
+                  <td>{{ recentPost.location }}</td>
+                </tr>
+                <tr>
+                  <td>실종일</td>
+                  <td>{{ recentPost.date }}</td>
+                </tr>
+                <tr>
+                  <td>견종</td>
+                  <td>{{ recentPost.breed }}</td>
+                </tr>
+                <tr>
+                  <td>성별</td>
+                  <td>{{ recentPost.gender }}</td>
+                </tr>
+              </table>
+
+              <button class="detail-btn" @click="goDetail(recentPost)">상세보기</button>
             </div>
         </div>
-      <button @click="next" class="card-btn">&gt;</button>
+      <!-- <button @click="next" class="card-btn">&gt;</button> -->
     </section>
+
+    <p v-else>최근 실종 게시글이 없습니다.</p>
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
+import { collection, getDocs, query, orderBy, limit } from "firebase/firestore";
+import { fbstore } from '../firebaseConfig';
 
-const pet = ref ({
-  location: '용답역 2번 출구 앞',
-  datetime: '2025-2-4 21:25',
-  breed: '시바견',
-  gender: '암컷',
-  features: '머리에 흰 반점이 하나 있음, 사람을 무서워 함',
-})
+const recentPost = ref(null);
+const router = useRouter()
 
-const prev = () => {
+onMounted(async () => {
+  try {
+    const q = query(collection(fbstore, "missingPosts"), orderBy("createdAt", "desc"), limit(1));
+    const querySnapshot = await getDocs(q);
+
+    if (!querySnapshot.empty) {
+      const doc = querySnapshot.docs[0];
+      recentPost.value = { id: doc.id, ...doc.data() };
+    }
+  } catch (error) {
+    console.error("최근 게시글 불러오기 오류:", error);
+  }
+});
+
+const goDetail = (pet) => {
+  if (!pet || !pet.id) {
+    console.error('잘못된 pet 객체:', pet)
+    return
+  }
+  router.push({ name: 'missing-detail', params: { id: pet.id } })
+}
+
+// const prev = () => {}
   // 이전 동물 불러오기
-}
 
-const next = () => {
+
+// const next = () => {}
  // 다음 동물 불러오기
-}
+
 </script>
 <style scoped>
   .logo{
@@ -61,26 +99,26 @@ const next = () => {
     max-width: 100vw;
     background-color: #EFE7DA;
     margin: 0;
-    display: flex;
     justify-content: center;
     align-content: center;
+    display: grid;
+    place-items: center;
   }
   .pet-card {
     display: flex;
     align-items: center;
     gap: 1rem;
-    margin: auto 1rem;
-    height: 37vh;
+    margin-top: 1rem;
     object-fit: cover;
     flex-shrink: 0; 
   }
   .pet-photo {
-    width: 150px;
-    height: 150px;
+    width: 165px;
+    height: 165px;
     object-fit: cover;
-    border-radius: 50%;
+    border-radius: 5%;
     background-color: white;
-    margin: auto 1rem;
+    margin-right: 1rem;
     border: none;
     flex-shrink: 0; 
 }
