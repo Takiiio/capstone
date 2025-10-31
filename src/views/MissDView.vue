@@ -105,10 +105,10 @@
           <h2 class="list-title">목격 정보</h2>
           <button type="button" @click="goToSightW(missing.id)">+</button>
         </div>
-        <div v-for="sightingD in sightings" :key=sightingD.id class="sighting-card"  @click="goToSightD(s)">
-          <h3 class="sighting-title">{{ sightings.title }}</h3>
-          <p class="sighting-time">{{ sightings.date }}</p>
-          <p class="sighting-location"> {{ sightings.location }} </p>
+        <div v-for="sightingD in sightings" :key=sightingD.id class="sighting-card"  @click="goToSightD(sightingD)">
+          <h3 class="sighting-title">{{ sightingD.title }}</h3>
+          <p class="sighting-time">{{ sightingD.date }}</p>
+          <p class="sighting-location"> {{ sightingD.location }} </p>
         </div>
       </div>
     </div>
@@ -203,12 +203,12 @@ const deletePost = () => {
   showMenu.value = false
 }
 
-
+// 목격 게시글 목록
 onMounted(async () => {
   try {
     const missingId = route.params.id   // 현재 보고 있는 실종 글 id
     const q = query(
-      collection(fbstore, 'sightingPosts'),
+      collection(fbstore, 'sightPosts'),
       where('missingId', '==', missingId)
     )
     const snapshot = await getDocs(q)
@@ -217,9 +217,12 @@ onMounted(async () => {
       id: doc.id,
       ...doc.data()
     }))
+
+    // 목격 주소 스토어 전달
+    store.setSightings(sightings.value)
     
   } catch (err) {
-    console.error('sightingPosts 불러오기 실패:', err)
+    console.error('sightPosts 불러오기 실패:', err)
   }
 })
 
@@ -227,8 +230,14 @@ const goToSightW = (missingId) => {
   router.push({ name: 'sighting-write', params: { id: missingId } })
 }
 
-const goToSightD = (s) => router.push({ name: 'sighting-detail', params: { id: s.id } })
+const goToSightD = (sighting) => {
+  if (!sighting || !sighting.id) {
+    console.error("sighting 객체 오류", sighting)
+    return
+  }
 
+  router.push({ name: 'sighting-detail', params: { id: sighting.id } })
+}
 
 //트위터공유코드
 const shareToTwitter = () => {
