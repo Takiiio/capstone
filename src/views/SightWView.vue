@@ -32,9 +32,13 @@
     <table class="report-table" border="1">
       <tbody>
         <tr>
-          <td class="report-table-td">사진</td>
+          <td class="report-table-td">동물 사진</td>
           <td class="report-table-td-w">
-            <input type="file" @change="onFileChange" accept="image/*" required />
+             <input type="file" multiple accept="image/*" @change="onFileChange" />
+          </td>
+          <td class="report-table-td">장소 사진</td>
+          <td class="report-table-td-w">
+             <input type="file" multiple accept="image/*" @change="onFileChange" />
           </td>
           <td class="report-table-td">목격 날짜</td>
           <td class="report-table-td-w">
@@ -68,7 +72,7 @@
 <script setup>
 import { ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { fbstore, storage } from '../firebaseConfig';
+import { fbstore, storage } from '../firebaseConfig'
 import { collection, addDoc } from 'firebase/firestore'
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage'
 import { getAuth } from 'firebase/auth'
@@ -77,64 +81,155 @@ import MapApiW from '@/components/MapApiW.vue'
 const router = useRouter()
 const route = useRoute()
 
+// --- 상태 변수
+const isSubmitting = ref(false)
+const selectedFiles = ref([])    // 여러 장 업로드 파일
+const previewUrls = ref([])      // 로컬 미리보기
+const uploadProgress = ref(0)    // 전체 진행률
+
+// --- 입력 폼
 const form = ref({
-  title: '', contactPublic: 'public',
-  date: '', time: '', location: '', content:''
+  title: '',
+  contactPublic: 'public',
+  date: '',
+  time: '',
+  location: '',
+  content: ''
 })
 
-const isSubmitted = ref(false)
-const selectedFile = ref(null)
-const previewImage = ref(null)
+// --- 금칙어 필터
+const forbiddenWords = [
+  '광고', '판매', '도박', '성인', '시발', 'ㅅㅂ', 'casino',
+  'http', 'httpsV', '텔레그램', '카카오톡'
+]
 
+// --- 파일 선택 핸들러
 const onFileChange = (e) => {
-  if (e.target.files.length > 0) {
-    selectedFile.value = e.target.files[0]
-    previewImage.value = URL.createObjectURL(selectedFile.value)
-  }
-}
+  const files = Array.from(e.target.files || [])
+  if (files.length === 0) return
 
-const handleSubmit = async () => {
-  isSubmitted.value = true
-  const required = ['title', 'contactPublic', 'date', 'location']
-  const isValid = required.every(k => form.value[k]?.trim())
-  if (!isValid) {
-    alert("필수 항목을 모두 입력해주세요.")
+  // 파일 개수 제한
+  if (files.length > 5) {
+    alert("최대 5장까지만 업로드할 수 있습니다.")
+    e.target.value = ''
     return
   }
+
+  // 파일 용량 제한 (10MB 이하)
+  const maxSize = 10 * 1024 * 1024
+  const invalid = files.find(f => f.size > maxSize)
+  if (invalid) {
+    alert(`파일 ${invalid.name} 용량이 10MB를 초과합니다.`)
+    e.target.value = ''
+    return
+  }
+
+  selectedFiles.value = files
+  previewUrls.value = files.map(file => URL.createObjectURL(file))
+}
+
+// --- 신고서 제출
+const handleSubmit = async () => {
+  if (isSubmitting.value) return
+  isSubmitting.value = true
+
   try {
+    // 1️⃣ 필수값 체크
+    const required = ['title', 'contactPublic', 'date', 'location']
+    const isValid = required.every(k => form.value[k]?.trim())
+    if (!isValid) {
+      alert("필수 항목을 모두 입력해주세요.")
+      isSubmitting.value = false
+      return
+    }
+
+    // 2️⃣ 로그인 확인
     const auth = getAuth()
     const user = auth.currentUser
     if (!user) {
-      alert("로그인이 필요합니다")
+      alert("로그인이 필요합니다.")
+      isSubmitting.value = false
       return
     }
-    let photoUrl = ''
-    if (selectedFile.value) {
-      const fileRef = storageRef(storage, `sightPosts/${Date.now()}_${selectedFile.value.name}`)
-      await uploadBytes(fileRef, selectedFile.value)
-      photoUrl = await getDownloadURL(fileRef)
+
+    // 3️⃣ 금칙어 검사
+    const allText = Object.values(form.value).join(' ').toLowerCase()
+    const containsForbidden = forbiddenWords.some(word => allText.includes(word))
+    if (containsForbidden) {
+      alert("내용에 부적절한 단어가 포함되어 있습니다.")
+      isSubmitting.value = false
+      return
     }
+
+    // 4️⃣ 파일 업로드
+    if (selectedFiles.value.length === 0) {
+      alert("사진을 1장 이상 업로드해주세요.")
+      isSubmitting.value = false
+      return
+    }
+
+    const totalFiles = selectedFiles.value.length
+    let uploadedUrls = []
+
+    for (let i = 0; i < totalFiles; i++) {
+      const file = selectedFiles.value[i]
+      try {
+        const uniqueName = `${Date.now()}_${file.name}`
+        const fileRef = storageRef(storage, `sightPosts/${uniqueName}`)
+        await uploadBytes(fileRef, file)
+        const url = await getDownloadURL(fileRef)
+        uploadedUrls.push(url)
+
+        // 업로드 진행률 (대략적인 %)
+        uploadProgress.value = (((i + 1) / totalFiles) * 100).toFixed(1)
+        console.log(`✅ [${i + 1}/${totalFiles}] 업로드 완료: ${url}`)
+      } catch (uploadErr) {
+        console.error(`🚨 ${file.name} 업로드 실패:`, uploadErr)
+        alert(`파일 "${file.name}" 업로드 중 오류가 발생했습니다.`)
+      }
+    }
+
+    if (uploadedUrls.length === 0) {
+      alert("이미지를 업로드하지 못했습니다.")
+      isSubmitting.value = false
+      return
+    }
+
+    // 5️⃣ Firestore 저장
     const postData = {
       ...form.value,
-      photoUrl,
+      imageUrls: uploadedUrls,
       uid: user.uid,
-      missingId: route.params.id, 
+      missingId: route.params.id || null,
       createdAt: new Date()
     }
-    const docRef = await addDoc(collection(fbstore, 'sightPosts'), postData)
-    router.push({ name: 'sighting-detail', params: { id: docRef.id } })
+
+    let docRef
+    try {
+      docRef = await addDoc(collection(fbstore, 'sightPosts'), postData)
+      console.log("✅ Firestore 저장 완료:", docRef.id)
+    } catch (dbErr) {
+      console.error("🚨 Firestore 저장 실패:", dbErr)
+      alert("게시글 저장 중 오류가 발생했습니다.")
+      isSubmitting.value = false
+      return
+    }
+
+    // 6️⃣ 이동
+    try {
+      router.push({ name: 'sighting-detail', params: { id: docRef.id } })
+    } catch (navErr) {
+      console.error("🚨 페이지 이동 실패:", navErr)
+      alert("게시글은 저장되었지만 이동 중 문제가 발생했습니다.")
+    }
+
   } catch (err) {
-    console.error("등록 실패:", err)
-    alert("등록 중 오류가 발생했습니다.")
+    console.error("🚨 알 수 없는 오류 발생:", err)
+    alert("예상치 못한 오류가 발생했습니다.")
+  } finally {
+    isSubmitting.value = false
   }
 }
-
-    // ✅ 성공 시 디테일 페이지로 이동
-  //   router.push({ name: 'sighting-detail', params: { id: docRef.id } })
-  // } catch (error) {
-  //   console.error("작성 중 오류 발생:", error)
-  // }
-// }
 </script>
 
 <style scoped>

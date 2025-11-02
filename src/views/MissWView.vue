@@ -52,9 +52,15 @@
           </td>
           <td class="report-table-td">사진</td>
           <td class="report-table-td-w">
-            <input type="file" accept="image/*" @change="onFileChange" />
-            <div v-if="previewImage" class="preview-box">
-              <img :src="previewImage" alt="미리보기" />
+             <input type="file" multiple accept="image/*" @change="onFileChange" />
+            <div v-if="previewImages.length" class="preview-box multi-preview">
+              <img
+                v-for="(url, i) in previewImages"
+                :key="i"
+                :src="url"
+                alt="미리보기"
+                class="preview-img"
+              />
             </div>
           </td>
         </tr>
@@ -133,8 +139,9 @@ import { getAuth } from 'firebase/auth'
 
 const router = useRouter()
 const isSubmitted = ref(false)
-const selectedFile = ref(null)
-const previewImage = ref(null)
+
+const selectedFiles = ref([])
+const previewImages = ref([])
 
 const form = ref({
   title: '', contactPublic: 'public',
@@ -143,11 +150,35 @@ const form = ref({
   warning: '', note: '', reward: '', status: 'y'
 })
 
+// 금칙어
+const forbiddenWords = [
+  '광고', '판매', '도박', '성인', '시발', 'ㅅㅂ', 'casino',
+  'http', 'httpsV', '텔레그램', '카카오톡'
+]
+
+// ✅ 여러 장 파일 선택
 const onFileChange = (e) => {
-  if (e.target.files.length > 0) {
-    selectedFile.value = e.target.files[0]
-    previewImage.value = URL.createObjectURL(selectedFile.value)
+  const files = Array.from(e.target.files || [])
+  if (files.length === 0) return
+
+  // 최대 6장 제한
+  if (files.length > 6) {
+    alert('최대 6장까지만 업로드할 수 있습니다.')
+    e.target.value = ''
+    return
   }
+
+  // 용량 제한 (10MB)
+  const maxSize = 10 * 1024 * 1024
+  const invalid = files.find(f => f.size > maxSize)
+  if (invalid) {
+    alert(`파일 "${invalid.name}" 용량이 10MB를 초과합니다.`)
+    e.target.value = ''
+    return
+  }
+
+  selectedFiles.value = files
+  previewImages.value = files.map(file => URL.createObjectURL(file))
 }
 
 const handleSubmit = async () => {
@@ -158,6 +189,15 @@ const handleSubmit = async () => {
     alert("필수 항목을 모두 입력해주세요.")
     return
   }
+
+  // ✅ 금칙어 검사
+  const allText = Object.values(form.value).join(' ').toLowerCase()
+  const containsForbidden = forbiddenWords.some(word => allText.includes(word))
+  if (containsForbidden) {
+    alert('내용에 부적절한 단어가 포함되어 있습니다.')
+    return
+  }
+
   try {
     const auth = getAuth()
     const user = auth.currentUser
@@ -165,15 +205,18 @@ const handleSubmit = async () => {
       alert("로그인이 필요합니다")
       return
     }
-    let photoUrl = ''
-    if (selectedFile.value) {
-      const fileRef = storageRef(storage, `missingPhotos/${Date.now()}_${selectedFile.value.name}`)
-      await uploadBytes(fileRef, selectedFile.value)
-      photoUrl = await getDownloadURL(fileRef)
+    // 여러 장 업로드 처리
+    let imageUrls = []
+    for (const file of selectedFiles.value) {
+      const fileRef = storageRef(storage, `missingPhotos/${Date.now()}_${file.name}`)
+      await uploadBytes(fileRef, file)
+      const url = await getDownloadURL(fileRef)
+      imageUrls.push(url)
     }
+
     const postData = {
       ...form.value,
-      photoUrl,
+      imageUrls, // 여러 장 URL 저장
       uid: user.uid,
       createdAt: new Date()
     }

@@ -16,6 +16,7 @@
           <button @click="saveChanges">저장</button>
           <button @click="cancelEditing">취소</button>
         </div>
+
         <p>
           <strong>닉네임:</strong>
           <template v-if="isEditing">
@@ -25,89 +26,98 @@
             {{ user?.nickname }}
           </template>
         </p>
+
         <p>
-        <strong>이메일:</strong> 
-        <template v-if="isEditing">
+          <strong>이메일:</strong>
+          <template v-if="isEditing">
             <input v-model="editedUser.email" />
           </template>
           <template v-else>
-          {{ user?.email }}
+            {{ user?.email }}
           </template>
         </p>
-        <p><strong>이름:</strong>
-        <template v-if="isEditing">
+
+        <p>
+          <strong>이름:</strong>
+          <template v-if="isEditing">
             <input v-model="editedUser.name" />
           </template>
           <template v-else>
-           {{ user?.name }}
-           </template>
-          </p>
-        <p><strong>전화번호:</strong>
-        <template v-if="isEditing">
+            {{ user?.name }}
+          </template>
+        </p>
+
+        <p>
+          <strong>전화번호:</strong>
+          <template v-if="isEditing">
             <input v-model="editedUser.phone" />
           </template>
           <template v-else>
-           {{ user?.phone }}
+            {{ user?.phone }}
           </template>
-           </p>
-        <p><strong>계좌번호:</strong>
-        <template v-if="isEditing">
+        </p>
+
+        <p>
+          <strong>계좌번호:</strong>
+          <template v-if="isEditing">
             <input v-model="editedUser.account" />
           </template>
           <template v-else>
-           {{ user?.account }}
+            {{ user?.account }}
           </template>
-           </p>
-        <p><strong>은행:</strong>
-        <template v-if="isEditing">
+        </p>
+
+        <p>
+          <strong>은행:</strong>
+          <template v-if="isEditing">
             <input v-model="editedUser.bank" />
           </template>
           <template v-else>
-           {{ user?.bank }}
+            {{ user?.bank }}
           </template>
-           </p>
+        </p>
       </div>
 
       <!-- 반려동물 정보 카드 -->
       <div class="card">
-        <h2>
-          <PawPrint class="icon" />
-          내 반려동물
-        </h2>
+        <h2><PawPrint class="icon" /> 내 반려동물</h2>
         <ul>
-          <li v-for="pet in user.pets" :key="pet.id" style="margin-bottom: 8px;">
+          <li v-for="pet in user.pets || []" :key="pet.id" style="margin-bottom: 8px;">
             <strong>{{ pet.name }}</strong> ({{ pet.species }}, {{ pet.age }}살)
           </li>
         </ul>
+        <p v-if="!user.pets || user.pets.length === 0">등록된 반려동물이 없습니다.</p>
       </div>
 
-      <!-- 작성한 게시글 관리 카드 -->
       <div class="card">
-        <h2>
-          <FileText class="icon" />
-          작성한 게시글 관리
-        </h2>
-        <ul v-if="user.posts && user.posts.length > 0" class="list">
-          <li v-for="post in user.posts" :key="post.id" class="list-item">
-            <strong>{{ post.title }}</strong>
-            <span
-              :class="['status-badge', post.status === '진행중' ? 'ongoing' : 'completed']"
-              style="margin-left: 12px;"
-            >
-              {{ post.status }}
-            </span>
-          </li>
-        </ul>
-        <p v-else>작성한 게시글이 없습니다.</p>
-      </div>
+  <h2><FileText class="icon" /> 작성한 게시글</h2>
+
+  <!-- 로딩 중 -->
+  <p v-if="isLoadingPosts" class="loading">게시글을 불러오는 중...</p>
+
+  <!-- 게시글 있음 -->
+  <ul v-else-if="userPosts.length > 0" class="list">
+    <li v-for="post in userPosts" :key="post.id" class="list-item" @click="goToDetail(post)">
+      <strong>{{ post.title || '제목 없음' }}</strong>
+      <span
+        class="status-badge"
+        :class="post.type === 'missing' ? 'missing' : 'sighting'"
+      >
+        {{ post.type === 'missing' ? '실종' : '목격' }}
+      </span>
+      <span class="date">{{ formatDate(post.createdAt) }}</span>
+    </li>
+  </ul>
+
+  <!-- 게시글 없음 -->
+  <p v-else class="no-posts">내가 작성한 글이 없습니다.</p>
+</div>
+
 
       <!-- 사례금 정보 카드 -->
       <div class="card" v-if="user.reward">
-        <h2>
-          <BadgeDollarSign class="icon" />
-          사례금 정보
-        </h2>
-        <p><strong>사례금 액수:</strong> {{ user.reward.amount.toLocaleString() }} 원</p>
+        <h2><BadgeDollarSign class="icon" /> 사례금 정보</h2>
+        <p><strong>사례금 액수:</strong> {{ user.reward.amount?.toLocaleString() }} 원</p>
         <p v-if="user.reward.status === '지급 완료'">
           <strong>지급 일자:</strong> {{ user.reward.date }}
         </p>
@@ -125,11 +135,10 @@
 
 <script>
 import { User, Smile, Edit2, PawPrint, FileText, BadgeDollarSign } from "lucide-vue-next";
-import { onValue, ref as dbRef, set } from "firebase/database";
-import { auth, db } from "../firebaseConfig";
 import { onAuthStateChanged } from "firebase/auth";
-import { useUserStore } from '@/stores/user' 
-
+import { doc, getDoc, setDoc, collection, query, where, getDocs, orderBy } from "firebase/firestore";
+import { auth, fbstore } from "../firebaseConfig";
+import { useUserStore } from "@/stores/user";
 
 export default {
   name: "MyPage",
@@ -141,30 +150,35 @@ export default {
     FileText,
     BadgeDollarSign,
   },
-    created() {
-    this.userStore = useUserStore();
-  },
   data() {
     return {
       user: null,
       isEditing: false,
       editedUser: null,
+      userPosts: [], // ✅ 내가 작성한 게시글
+      isLoadingPosts: false, // ✅ 로딩 상태 추가
+      userStore: null,
     };
   },
+  created() {
+    this.userStore = useUserStore();
+  },
   methods: {
+    // ✅ 프로필 수정 시작
     startEditing() {
       this.isEditing = true;
       this.editedUser = { ...this.user };
     },
+
+    // ✅ Firestore에 정보 저장
     async saveChanges() {
       const uid = auth.currentUser?.uid;
       if (!uid) return;
 
       try {
-        await set(dbRef(db, `users/${uid}`), this.editedUser);
-
+        await setDoc(doc(fbstore, "users", uid), this.editedUser, { merge: true });
         this.user = { ...this.editedUser };
-        this.userStore.setUser(this.editedUser); // store 갱신
+        this.userStore.setUser(this.editedUser);
         this.isEditing = false;
         alert("정보가 저장되었습니다.");
       } catch (error) {
@@ -172,31 +186,102 @@ export default {
         alert("오류가 발생했습니다.");
       }
     },
+
     cancelEditing() {
       this.isEditing = false;
       this.editedUser = null;
     },
+
+    // ✅ 게시글 상세로 이동
+    goToDetail(post) {
+      if (post.type === "missing") {
+        this.$router.push({ name: "missing-detail", params: { id: post.id } });
+      } else {
+        this.$router.push({ name: "sighting-detail", params: { id: post.id } });
+      }
+    },
+
+    // ✅ 날짜 포맷
+    formatDate(ts) {
+      if (!ts) return "";
+      const date = ts.toDate ? ts.toDate() : ts;
+      return new Date(date).toLocaleDateString("ko-KR", {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+      });
+    },
+
+    // ✅ Firestore에서 내가 작성한 게시글 불러오기
+    async fetchUserPosts(uid) {
+      this.isLoadingPosts = true;
+      const posts = [];
+
+      try {
+        // 🔹 실종 게시글
+        const missingQ = query(
+          collection(fbstore, "missingPosts"),
+          where("uid", "==", uid),
+          orderBy("createdAt", "desc")
+        );
+        const missingSnap = await getDocs(missingQ);
+        missingSnap.forEach((docSnap) => {
+          posts.push({ id: docSnap.id, type: "missing", ...docSnap.data() });
+        });
+
+        // 🔹 목격 게시글
+        const sightQ = query(
+          collection(fbstore, "sightPosts"),
+          where("uid", "==", uid),
+          orderBy("createdAt", "desc")
+        );
+        const sightSnap = await getDocs(sightQ);
+        sightSnap.forEach((docSnap) => {
+          posts.push({ id: docSnap.id, type: "sighting", ...docSnap.data() });
+        });
+
+        // 🔹 최신순 정렬
+        posts.sort((a, b) => {
+          const aTime = a.createdAt?.seconds || 0;
+          const bTime = b.createdAt?.seconds || 0;
+          return bTime - aTime;
+        });
+
+        this.userPosts = posts;
+      } catch (err) {
+        console.error("게시글 불러오기 실패:", err);
+        alert("게시글 불러오는 중 오류가 발생했습니다.");
+      } finally {
+        this.isLoadingPosts = false; // ✅ 항상 false로 설정
+      }
+    },
   },
+
   mounted() {
-    onAuthStateChanged(auth, (currentUser) => {
+    onAuthStateChanged(auth, async (currentUser) => {
       if (currentUser) {
         const uid = currentUser.uid;
-        const userRef = dbRef(db, `users/${uid}`);
-
-        onValue(userRef, (snapshot) => {
+        try {
+          // ✅ 유저 정보 불러오기
+          const userRef = doc(fbstore, "users", uid);
+          const snapshot = await getDoc(userRef);
           if (snapshot.exists()) {
-            this.user = snapshot.val();
-          } else {
-            console.log("No user data found.");
+            this.user = snapshot.data();
           }
-        });
+
+          // ✅ 게시글 목록 불러오기
+          await this.fetchUserPosts(uid);
+        } catch (error) {
+          console.error("유저 데이터 로드 실패:", error);
+        }
       } else {
-        console.log("User not logged in.");
+        console.log("로그인된 사용자 없음");
       }
     });
   },
 };
 </script>
+
 
 
 <style scoped>
@@ -295,5 +380,28 @@ h1 {
 
 .list-item:last-child {
   border-bottom: none;
+}
+.post-list {
+  list-style: none;
+  padding: 0;
+}
+.post-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 0;
+  border-bottom: 1px solid #ddd;
+  cursor: pointer;
+  transition: 0.2s;
+}
+.post-item:hover {
+  background: #f0f8ff;
+}
+.post-type {
+  color: #007aff;
+  font-weight: bold;
+}
+.post-date {
+  color: #888;
+  font-size: 0.8rem;
 }
 </style>

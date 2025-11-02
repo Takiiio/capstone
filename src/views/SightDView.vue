@@ -2,10 +2,10 @@
   <div class="detail-page">
     <div class="photo-container">
       <img
-        v-if="sighting.photoUrl"
-        :src="sighting.photoUrl"
+        v-if="sighting.imageUrls && sighting.imageUrls.length"
+        :src="sighting.imageUrls[0]"
         alt="목격된 반려동물 사진"
-        class="animal-photo"
+        class="main-photo" 
       />
       <div v-else class="photo-placeholder">사진 준비 중</div>
 
@@ -34,13 +34,29 @@
   </div>
 
   <div class="detail-info">
-    <div>
+    <div class="photo-section">
       <h2>동물 사진</h2>
-      <div><img :src="sighting.photoUrl || ''" alt="동물 사진" /></div>
+      <div class="photo-list">
+        <img
+          v-for="(url, idx) in animalPhotos"
+          :key="'animal-' + idx"
+          :src="url"
+          alt="동물 사진"
+          class="animal-photo"
+        />
+      </div>
     </div>
-    <div>
+    <div class="photo-section">
       <h2>장소 사진</h2>
-      <div><img src="" alt="장소 사진" /></div>
+      <div class="photo-list">
+        <img
+          v-for="(url, idx) in placePhotos"
+          :key="'place-' + idx"
+          :src="url"
+          alt="장소 사진"
+          class="place-photo"
+        />
+      </div>
     </div>
     <div style="display: flex; margin: 1rem;">
       <div>
@@ -52,22 +68,23 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { doc, getDoc } from 'firebase/firestore'
-import { useLocationStore } from '@/stores/locationStore';
-import { fbstore } from '../firebaseConfig';
+import { useLocationStore } from '@/stores/locationStore'
+import { fbstore } from '../firebaseConfig'
 import MapApiD from '@/components/MapApiD.vue'
 
-const store = useLocationStore();
-
+const store = useLocationStore()
 const route = useRoute()
+
+// ✅ imageUrls로 맞춤
 const sighting = ref({
   title: '',
   date: '',
   time: '',
   address: '',
-  imageUrl: '',
+  imageUrls: [], // ✅ 복수형으로 수정
   phoneno: '',
   contactPublic: 'private',
   missingId: '',
@@ -82,18 +99,20 @@ onMounted(async () => {
   if (docSnap.exists()) {
     const postData = docSnap.data()
     sighting.value = postData
-    
-    store.setSightingAddress(postData.location || '');
-    
+
+    store.setSightingAddress(postData.location || '')
+
     // ✅ 연결된 실종 위치 불러오기
     if (postData.missingId) {
-      const missingRef = doc(fbstore, 'missingPosts', postData.missingId);
-      const missingSnap = await getDoc(missingRef);
+      const missingRef = doc(fbstore, 'missingPosts', postData.missingId)
+      const missingSnap = await getDoc(missingRef)
       if (missingSnap.exists()) {
-        const missingData = missingSnap.data();
-        store.setMissingAddress(missingData.location || '');
+        const missingData = missingSnap.data()
+        store.setMissingAddress(missingData.location || '')
       }
     }
+
+    // ✅ 작성자 정보 불러오기
     if (postData.uid) {
       const userRef = doc(fbstore, 'users', postData.uid)
       const userSnap = await getDoc(userRef)
@@ -103,14 +122,22 @@ onMounted(async () => {
       } else {
         sighting.value.nickname = '알 수 없음'
       }
+    }
   } else {
     console.warn('문서를 찾을 수 없습니다.')
   }
-  
-}})
+})
 
+// 반드시 onMounted 밖에서 정의해야 template에서 접근 가능
+const animalPhotos = computed(() =>
+  (sighting.value.imageUrls || []).slice(0, 3).filter(Boolean)
+)
 
+const placePhotos = computed(() =>
+  (sighting.value.imageUrls || []).slice(3, 6).filter(Boolean)
+)
 </script>
+
 
 <style scoped>
 .detail-page {
@@ -129,8 +156,10 @@ onMounted(async () => {
 .photo-container {
   grid-area: photo;
 }
-.animal-photo {
+.main-photo {
   width: 100%;
+  height: auto;
+   object-fit: cover;
   border-radius: 8px;
 }
 .photo-placeholder {
@@ -243,4 +272,26 @@ onMounted(async () => {
   border: none;
   flex-shrink: 0;
 }
+
+.photo-section {
+  margin-bottom: 2rem;
+}
+
+.photo-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.animal-photo,
+.place-photo {
+  width: 180px;
+  height: 180px;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 1px solid #ddd;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+  transition: transform 0.2s;
+}
+
 </style>

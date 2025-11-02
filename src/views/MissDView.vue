@@ -2,10 +2,10 @@
   <div class="detail-page" v-if="isLoaded">
     <div class="photo-container">
       <img
-        v-if="missing.photoUrl"
-        :src="missing.photoUrl"
+        v-if="missing.imageUrls && missing.imageUrls.length"
+        :src="missing.imageUrls[0]"
         alt="실종된 반려동물 사진"
-        class="animal-photo"
+        class="main-photo"
       />
       <div v-else class="photo-placeholder">사진 준비 중</div>
 
@@ -85,13 +85,30 @@
   </div>
 
   <div class="detail-info" v-if="isLoaded">
-    <div>
+    <div class="photo-section">
       <h2>동물 사진</h2>
-      <div><img :src="missing.photoUrl || ''"></div>
+      <div class="photo-list">
+        <img
+          v-for="(url, idx) in animalPhotos"
+          :key="'animal-' + idx"
+          :src="url"
+          alt="동물 사진"
+          class="sub-photo"
+        />
+      </div>
     </div>
-    <div>
+
+    <div class="photo-section">
       <h2>장소 사진</h2>
-      <div><img src=""></div>
+      <div class="photo-list">
+        <img
+          v-for="(url, idx) in placePhotos"
+          :key="'place-' + idx"
+          :src="url"
+          alt="장소 사진"
+          class="sub-photo"
+        />
+      </div>
     </div>
 
 
@@ -117,7 +134,7 @@
 
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useLocationStore } from '@/stores/locationStore';
 import { doc, getDoc, collection, getDocs, query, where } from 'firebase/firestore'
@@ -138,7 +155,7 @@ const sightings = ref([])
 const currentUid = ref(null)
 
 const missing = ref({
-  photoUrl: '',
+  imageUrls: [],
   title: '',
   nickname: '',
   date: '',
@@ -179,6 +196,15 @@ onMounted(async () => {
     router.back()
   }
 })
+
+// ✅ 이미지 분리
+const animalPhotos = computed(() =>
+  (missing.value.imageUrls || []).slice(0, 3).filter(Boolean)
+)
+
+const placePhotos = computed(() =>
+  (missing.value.imageUrls || []).slice(3, 6).filter(Boolean)
+)
 
 const toggleMenu = () => {
   showMenu.value = !showMenu.value
@@ -298,8 +324,13 @@ const shareToInstagram = () => {
 }
 
 .detail-info {
-  --sighting-header-font: 1.1rem;
-  --sighting-text-font: 0.8rem;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 1rem;
+  display: grid;
+  grid-template-rows: auto auto;
+  gap: 1.5rem;
+  position: relative;
 }
 
 .detail-info img{
@@ -314,8 +345,10 @@ const shareToInstagram = () => {
 .photo-container {
   grid-area: photo;
 }
-.animal-photo {
+.main-photo {
   width: 100%;
+  height: auto;
+  object-fit: cover;
   border-radius: 8px;
 }
 .photo-placeholder {
@@ -534,4 +567,26 @@ const shareToInstagram = () => {
   margin-top: 20px;
   text-align: center;
 }
+
+.photo-section {
+  margin-bottom: 2rem;
+}
+
+.photo-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.animal-photo,
+.place-photo {
+  width: 180px;
+  height: 180px;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 1px solid #ddd;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+  transition: transform 0.2s;
+}
+
 </style>
