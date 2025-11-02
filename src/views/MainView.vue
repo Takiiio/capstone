@@ -1,7 +1,7 @@
 <template>
     <section class="logo">
       <div class="logo-img">
-        <h2>LOGO</h2>
+        <img :src="logoImage" alt="PawPaw 로고" class="main-logo" />
       </div>
     </section>
 
@@ -45,6 +45,7 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { collection, getDocs, query, orderBy, limit } from "firebase/firestore";
 import { fbstore } from '../firebaseConfig';
+import logoImage from '@/assets/images/로고.png' 
 
 const recentPost = ref(null);
 const router = useRouter()
@@ -81,17 +82,25 @@ const goDetail = (pet) => {
 
 </script>
 <style scoped>
-  .logo{
+  .logo {
     min-height: 50vh;
     max-width: 100vw;
     margin: 0;
     display: flex;
-    justify-content: center;
-    align-content: center;
+    justify-content: center; 
+    align-items: center; 
   }
-  .logo-img{
-    margin: auto;
+
+  .logo-img {
+    text-align: center;
+    color: #f5e6d0;
   }
+
+.main-logo {
+  width: 440px;
+  height: auto;
+}
+
   .pet-card-info h3{
     color: #A18F7A;
   }

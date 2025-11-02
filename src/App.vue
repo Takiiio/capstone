@@ -2,9 +2,11 @@
   <div id="app">
     <header class="navbar">
       <div class="logo">
-          <router-link to="/" class="nav-link">LOGO</router-link>
+          <router-link to="/" class="nav-link">
+            <img :src="smallLogo" alt="PawPaw 로고" class="header-logo-img" />
+          </router-link>
       </div>
-      <nav class="navbar-nav">
+      <nav class="navbar-nav" >
         <ul class="navbar-nav-menu">
           <li>
             <router-link to="/missing-list" class="nav-link">실종 동물 찾기</router-link>
@@ -42,6 +44,7 @@ import { useUserStore } from '@/stores/user'
 import { signOut } from 'firebase/auth'
 import { auth } from '@/firebaseConfig'
 import { watch, computed } from 'vue'
+import smallLogo from '@/assets/images/로고2.png'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -105,6 +108,11 @@ const logout = async () => {
   color: #A18F7A;
   font-size: 30px;
   text-decoration-line: none;
+}
+.header-logo-img {
+    width: 120px; 
+    height: auto;
+    display: block; 
 }
 
 .navbar-nav {
