@@ -118,11 +118,12 @@ const filteredPets = computed(() => {
       return !incompleteOnly.value || pet.status === 'y'
     })
     .sort((a, b) => {
-      // 날짜 정렬
-      const dA = new Date(`${a.date.replace(/\./g, '-')}` + ' ' + convertTime(a.time))
-      const dB = new Date(`${b.date.replace(/\./g, '-')}` + ' ' + convertTime(b.time))
-      return sortOrder.value === 'desc' ? dB - dA : dA - dB
-    })
+      const dA = new Date(`${(a.date || '').replace(/\./g, '-')}` + ' ' + convertTime(a.time));
+      const dB = new Date(`${(b.date || '').replace(/\./g, '-')}` + ' ' + convertTime(b.time));
+      return sortOrder.value === 'desc' ? dB - dA : dA - dB;
+})
+
+
 })
 
 const toggleSortOrder = () => {
@@ -132,10 +133,16 @@ const toggleSortOrder = () => {
 onMounted(async () => {
   try {
     const snapshot = await getDocs(collection(fbstore, 'missingPosts'))
-    const loadedPets = snapshot.docs.map(doc => ({
+    const loadedPets = snapshot.docs.map(doc => {
+    const data = doc.data();
+    return {
       id: doc.id,
-      ...doc.data()
-    }))
+      ...data,
+      date: data.date || '0000-00-00',   // ✅ 기본값 추가
+      time: data.time || '00:00'
+    };
+  });
+
     pets.value = loadedPets
   } catch (err) {
     console.error('missingPosts 불러오기 실패:', err)

@@ -1,6 +1,6 @@
 <script setup>
 /* global kakao */
-import { ref, watch } from 'vue';
+import { ref, watch, onMounted } from 'vue';
 import { KakaoMap, KakaoMapMarker, KakaoMapCustomOverlay } from 'vue3-kakao-maps';
 import { useLocationStore } from '@/stores/locationStore';
 
@@ -39,12 +39,22 @@ const generateOverlayContent = (marker) => {
   `;
 };
 
+onMounted(() => {
+  if (window.kakao && window.kakao.maps) {
+    // 이미 로드됨
+    window.kakao.maps.load(() => {
+      console.log('Kakao SDK 로드 완료');
+    });
+  } else {
+    console.warn('Kakao SDK가 아직 로드되지 않았습니다.');
+  }
+});
 
 const onLoadKakaoMap = (map) => {
   bounds = new kakao.maps.LatLngBounds();
   const geocoder = new kakao.maps.services.Geocoder();
 
-  // 실종 장소 마커
+  // 실종 게시글의 마커
 watch(
     () => store.missingLocation,
     (newLocation) => {
@@ -132,9 +142,6 @@ watch(
     },
     { immediate: true }
   );
-
-
-  // 목격 마커
 
   // sightings 마커들
   store.sightings.forEach((sighting, index) => {

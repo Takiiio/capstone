@@ -1,5 +1,5 @@
 // Import the functions you need from the SDKs you need
-import { initializeApp,  getApps } from "firebase/app";
+import { initializeApp } from "firebase/app";
 import { getAuth } from 'firebase/auth'
 import { getFirestore } from 'firebase/firestore'
 import { getStorage } from 'firebase/storage'
@@ -18,9 +18,8 @@ const firebaseConfig = {
   appId: "1:674117232169:web:a3d3f00dbf0f5aa4419e38"
 };
 
-// ✅ 이미 초기화된 Firebase 앱이 있으면 재사용
-const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig)
-
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
 
 const auth = getAuth(app)
 const storage = getStorage(app)
