@@ -22,7 +22,7 @@
 
         <!-- 이미지 -->
          <div class="card-image">
-          <img src="images/큐알.png" alt="QR코드 이미지" />
+          <img src="@/assets/images/큐알.png" alt="QR코드 이미지" />
          </div>
       </div>
 
@@ -45,7 +45,7 @@
         </ul>
         <!-- 이미지 -->
          <div class="card-image2">
-          <img src="images/큐알키링.png" alt="QR코드 이미지" />
+          <img src="@/assets/images/큐알키링.png" alt="QR코드 이미지" />
          </div>
       </div>
 

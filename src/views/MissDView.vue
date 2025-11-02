@@ -137,7 +137,7 @@
 import { ref, onMounted, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useLocationStore } from '@/stores/locationStore';
-import { doc, getDoc, collection, getDocs, query, where } from 'firebase/firestore'
+import { doc, getDoc, collection, getDocs, query, where,deleteDoc } from 'firebase/firestore'
 import { fbstore } from '../firebaseConfig';
 import { getAuth } from "firebase/auth"
 import MapApiD from '@/components/MapApiD.vue'
@@ -216,18 +216,63 @@ onMounted(() => {
 })
 
 const editPost = () => {
-  alert('수정 페이지로 이동합니다. (임시 동작)')
-  showMenu.value = false
-}
+  const auth = getAuth();
+  const user = auth.currentUser;
 
-const deletePost = () => {
-  const confirmed = confirm('정말 삭제하시겠습니까?')
-  if (confirmed) {
-    alert('삭제되었습니다. (임시 동작)')
-    router.push({ name: 'missing-list' })
+  if (!user) {
+    alert("로그인이 필요합니다.");
+    return;
   }
-  showMenu.value = false
-}
+
+  // ✅ 작성자만 수정 가능
+  if (missing.value.uid !== user.uid) {
+    alert("본인 게시글만 수정할 수 있습니다.");
+    return;
+  }
+
+  // ✅ 수정 페이지로 이동
+  router.push({
+    name: "missing-write", // ← 네 라우터 이름에 맞게 변경 가능
+    params: { id: route.params.id },
+  });
+
+  showMenu.value = false;
+};
+
+const deletePost = async () => {
+  const confirmed = confirm("정말 삭제하시겠습니까?");
+  if (!confirmed) {
+    showMenu.value = false;
+    return;
+  }
+
+  const auth = getAuth();
+  const user = auth.currentUser;
+
+  if (!user) {
+    alert("로그인이 필요합니다.");
+    return;
+  }
+
+  // ✅ 작성자 UID 확인
+  if (missing.value.uid !== user.uid) {
+    alert("본인 게시글만 삭제할 수 있습니다.");
+    return;
+  }
+
+  try {
+    const docRef = doc(fbstore, "missingPosts", route.params.id);
+    await deleteDoc(docRef);
+
+    alert("게시글이 삭제되었습니다.");
+    router.push({ name: "missing-list" });
+  } catch (err) {
+    console.error("🚨 게시글 삭제 실패:", err);
+    alert("게시글 삭제 중 오류가 발생했습니다.");
+  } finally {
+    showMenu.value = false;
+  }
+};
 
 // 목격 게시글 목록
 onMounted(async () => {

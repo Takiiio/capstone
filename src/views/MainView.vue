@@ -6,38 +6,50 @@
     </section>
 
   
-    <section class="pet"  v-if="recentPost">
-    <h2>최근 실종 동물</h2>
-      <!-- <button @click="prev" class="card-btn">&lt;</button> -->
-        <div class="pet-card">
-          <img :src="recentPost.photoUrl" alt="발견 동물" class="pet-photo"/>
-            <div class="pet-card-info">
-              <table>
-                <tr>
-                  <td>실종 장소 &nbsp; </td>
-                  <td>{{ recentPost.location }}</td>
-                </tr>
-                <tr>
-                  <td>실종일</td>
-                  <td>{{ recentPost.date }}</td>
-                </tr>
-                <tr>
-                  <td>견종</td>
-                  <td>{{ recentPost.breed }}</td>
-                </tr>
-                <tr>
-                  <td>성별</td>
-                  <td>{{ recentPost.gender }}</td>
-                </tr>
-              </table>
+    <section class="pet">
+  <h2>최근 실종 동물</h2>
 
-              <button class="detail-btn" @click="goDetail(recentPost)">상세보기</button>
-            </div>
-        </div>
-      <!-- <button @click="next" class="card-btn">&gt;</button> -->
-    </section>
+  <!-- 게시글이 있을 때 -->
+  <div
+    v-if="recentPost && Object.keys(recentPost).length > 0"
+    class="pet-card"
+  >
+    <img
+      v-if="recentPost.imageUrls && recentPost.imageUrls.length"
+      :src="recentPost.imageUrls[0]"
+      alt="목격된 반려동물 사진"
+      class="pet-photo"
+    />
+    <div class="pet-card-info">
+      <table>
+        <tr>
+          <td>실종 장소&nbsp;</td>
+          <td>{{ recentPost.location || '정보 없음' }}</td>
+        </tr>
+        <tr>
+          <td>실종일</td>
+          <td>{{ recentPost.date || '미입력' }}</td>
+        </tr>
+        <tr>
+          <td>견종</td>
+          <td>{{ recentPost.breed || '미입력' }}</td>
+        </tr>
+        <tr>
+          <td>성별</td>
+          <td>{{ recentPost.gender || '미입력' }}</td>
+        </tr>
+      </table>
 
-    <p v-else>최근 실종 게시글이 없습니다.</p>
+      <button class="detail-btn" @click="goDetail(recentPost)">상세보기</button>
+    </div>
+  </div>
+
+  <!-- 게시글이 없을 때 -->
+  <div v-else class="no-post-box">
+    <p class="no-post-message">최근 실종 게시글이 없습니다.</p>
+  </div>
+</section>
+
 </template>
 
 <script setup>
@@ -155,7 +167,15 @@ const goDetail = (pet) => {
     cursor: pointer;
     margin: 1rem 1rem;
   }
+  .no-post-box {
+    text-align: center;
+    padding: 2rem 0;
+  }
 
+  .no-post-message {
+    color: #888;
+    font-size: 1rem;
+  }
 
 
 </style>

@@ -1,6 +1,6 @@
 <template>
   <div class="report-page">
-    <h2 class="report-title">반려동물 분실 신고서</h2>
+    <h2 class="report-title"> {{ isEditMode ? '분실 신고 수정' : '반려동물 분실 신고서' }}</h2>
 
     <!-- 제목 / 연락처 -->
     <table class="report-table" border="1">
@@ -129,16 +129,18 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, onMounted } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import MapApiW from '@/components/MapApiW.vue'
 import { fbstore, storage } from '../firebaseConfig'
-import { collection, addDoc } from 'firebase/firestore'
+import { collection, addDoc, doc, getDoc, updateDoc } from 'firebase/firestore'
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage'
 import { getAuth } from 'firebase/auth'
 
 const router = useRouter()
+const route = useRoute()
 const isSubmitted = ref(false)
+const isEditMode = ref(false) // 
 
 const selectedFiles = ref([])
 const previewImages = ref([])
@@ -147,7 +149,8 @@ const form = ref({
   title: '', contactPublic: 'public',
   animalName: '', gender: '', age: '', weight: '', color: '',
   date: '', time: '', breed: '', location: '', radius: '',
-  warning: '', note: '', reward: '', status: 'y'
+  warning: '', note: '', reward: '', status: 'y',
+  imageUrls: [] 
 })
 
 // 금칙어
@@ -156,7 +159,7 @@ const forbiddenWords = [
   'http', 'httpsV', '텔레그램', '카카오톡'
 ]
 
-// ✅ 여러 장 파일 선택
+// 여러 장 파일 선택
 const onFileChange = (e) => {
   const files = Array.from(e.target.files || [])
   if (files.length === 0) return
@@ -181,6 +184,37 @@ const onFileChange = (e) => {
   previewImages.value = files.map(file => URL.createObjectURL(file))
 }
 
+// 수정 모드일 경우 데이터 불러오기
+onMounted(async () => {
+  const id = route.params.id
+  if (!id) return // 새 글 작성 모드
+
+  isEditMode.value = true
+
+  const docRef = doc(fbstore, 'missingPosts', id)
+  const docSnap = await getDoc(docRef)
+
+  if (docSnap.exists()) {
+    const data = docSnap.data()
+    form.value = { ...form.value, ...data }
+
+    // 로그인한 사용자만 수정 가능
+    const auth = getAuth()
+    const user = auth.currentUser
+    if (!user || user.uid !== data.uid) {
+      alert('본인 게시글만 수정할 수 있습니다.')
+      router.back()
+      return
+    }
+
+    previewImages.value = data.imageUrls || []
+  } else {
+    alert('게시글을 찾을 수 없습니다.')
+    router.back()
+  }
+})
+
+// 등록 및 수정 처리
 const handleSubmit = async () => {
   isSubmitted.value = true
   const required = ['title', 'contactPublic', 'animalName', 'date', 'location']
@@ -190,7 +224,7 @@ const handleSubmit = async () => {
     return
   }
 
-  // ✅ 금칙어 검사
+  // 금칙어 검사
   const allText = Object.values(form.value).join(' ').toLowerCase()
   const containsForbidden = forbiddenWords.some(word => allText.includes(word))
   if (containsForbidden) {
@@ -205,8 +239,9 @@ const handleSubmit = async () => {
       alert("로그인이 필요합니다")
       return
     }
-    // 여러 장 업로드 처리
-    let imageUrls = []
+
+    // 이미지 업로드
+    let imageUrls = [...(form.value.imageUrls || [])]
     for (const file of selectedFiles.value) {
       const fileRef = storageRef(storage, `missingPhotos/${Date.now()}_${file.name}`)
       await uploadBytes(fileRef, file)
@@ -216,18 +251,33 @@ const handleSubmit = async () => {
 
     const postData = {
       ...form.value,
-      imageUrls, // 여러 장 URL 저장
+      imageUrls,
       uid: user.uid,
-      createdAt: new Date()
+      updatedAt: new Date()
     }
-    const docRef = await addDoc(collection(fbstore, 'missingPosts'), postData)
-    router.push({ name: 'missing-detail', params: { id: docRef.id } })
+
+    if (isEditMode.value) {
+      // 수정 모드일 경우 updateDoc
+      const docRef = doc(fbstore, 'missingPosts', route.params.id)
+      await updateDoc(docRef, postData)
+      alert('게시글이 수정되었습니다.')
+      router.push({ name: 'missing-detail', params: { id: route.params.id } })
+    } else {
+      // 신규 등록
+      const docRef = await addDoc(collection(fbstore, 'missingPosts'), {
+        ...postData,
+        createdAt: new Date()
+      })
+      alert('게시글이 등록되었습니다.')
+      router.push({ name: 'missing-detail', params: { id: docRef.id } })
+    }
   } catch (err) {
     console.error("등록 실패:", err)
     alert("등록 중 오류가 발생했습니다.")
   }
 }
 </script>
+
 
 <style scoped>
 .required::after {
