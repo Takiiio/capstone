@@ -317,7 +317,7 @@ const shareToTwitter = () => {
   const location = missing.value?.location || ''
   const reward = missing.value?.reward ? `사례금: ${missing.value.reward}원` : ''
   const text = encodeURIComponent(`${title}\n ${location}\n${reward}`)
-  const url = encodeURIComponent(`http://localhost:8080/miss/${id}`)  // 배포 시 도메인 변경
+  const url = encodeURIComponent(`https://takiiio.github.io/capstone/missing-detail/${id}`)  // 배포 시 도메인 변경
   const twitterUrl = `https://twitter.com/intent/tweet?text=${text}&url=${url}`
 
   window.open(twitterUrl, '_blank')
