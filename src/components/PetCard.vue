@@ -3,9 +3,12 @@
   <div v-if="pet" class="pet-card" @click="handleClick">
 
     <!-- ✅ 이미지 유무에 따라 조건부 표시 -->
-    <div v-if="pet.photoUrl" class="pet-image-wrapper">
+    <div v-if="pet.imageUrls" class="pet-image-wrapper">
       <!-- 이미지가 있을 경우 표시 -->
-      <img :src="pet.photoUrl" alt="동물 사진" class="pet-image" />
+      <img 
+      :src="pet.imageUrls[0]"
+      alt="실종된 반려동물 사진"
+      class="pet-image" />
     </div>
 
     <div v-else class="pet-placeholder">

@@ -49,7 +49,7 @@
             <th>성별</th><td>{{ missing.gender }}</td>
           </tr>
           <tr><th>품종</th><td colspan="3">{{ missing.breed }}</td></tr>
-          <tr><th>특징</th><td colspan="3">{{ missing.age }}</td></tr>
+          <tr><th>나이</th><td colspan="3">{{ missing.age }}</td></tr>
         </table>
       </div>
 
@@ -374,7 +374,6 @@ const shareToInstagram = () => {
   padding: 1rem;
   display: grid;
   grid-template-rows: auto auto;
-  gap: 1.5rem;
   position: relative;
 }
 
@@ -620,18 +619,18 @@ const shareToInstagram = () => {
 .photo-list {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 0px;
 }
 
-.animal-photo,
-.place-photo {
-  width: 180px;
-  height: 180px;
-  object-fit: cover;
+.sub-photo {
+  width: 200px;
+  height: auto;
+  object-fit: contain;
   border-radius: 8px;
   border: 1px solid #ddd;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
   transition: transform 0.2s;
+  margin: 0;          /* 혹시 이미지 기본 여백 제거 */
+  padding: 0;
 }
 
 </style>

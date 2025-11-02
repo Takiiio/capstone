@@ -32,13 +32,10 @@
     <table class="report-table" border="1">
       <tbody>
         <tr>
-          <td class="report-table-td">동물 사진</td>
+          <td class="report-table-td">목격 위치</td>
           <td class="report-table-td-w">
-             <input type="file" multiple accept="image/*" @change="onFileChange" />
-          </td>
-          <td class="report-table-td">장소 사진</td>
-          <td class="report-table-td-w">
-             <input type="file" multiple accept="image/*" @change="onFileChange" />
+            <input type="text" placeholder="목격 위치" v-model="form.location" :class="{ 'input-error': isSubmitted && !form.title }"/>
+            <MapApiW v-model="form.location" />
           </td>
           <td class="report-table-td">목격 날짜</td>
           <td class="report-table-td-w">
@@ -49,10 +46,9 @@
           </td>
         </tr>
         <tr>
-          <td class="report-table-td">목격 위치</td>
+          <td class="report-table-td">사진</td>
           <td class="report-table-td-w">
-            <input type="text" placeholder="목격 위치" v-model="form.location" :class="{ 'input-error': isSubmitted && !form.title }"/>
-            <MapApiW v-model="form.location" />
+             <input type="file" multiple accept="image/*" @change="onFileChange" />
           </td>
           <td class="report-table-td">내용</td>
           <td class="report-table-td-w">
