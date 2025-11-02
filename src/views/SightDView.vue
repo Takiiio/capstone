@@ -8,13 +8,12 @@
         class="animal-photo"
       />
       <div v-else class="photo-placeholder">사진 준비 중</div>
-    </div>
 
     <div class="post-header">
       <h1 class="post-title">{{ sighting.title }}</h1>
-      <!-- 작성자 닉네임 데이터 없으면 주석 처리하거나 삭제 -->
-      <!-- <p class="post-author">{{ sighting.authorNickname }}</p> -->
+      <p class="post-author">{{ sighting.nickname || '작성자 미입력' }}</p>
     </div>
+  </div>
 
     <div class="info-wrapper">
       <div class="info-card sighting-info">
@@ -71,7 +70,8 @@ const sighting = ref({
   imageUrl: '',
   phoneno: '',
   contactPublic: 'private',
-  missingId: ''
+  missingId: '',
+  nickname: '',
 })
 
 onMounted(async () => {
@@ -94,10 +94,22 @@ onMounted(async () => {
         store.setMissingAddress(missingData.location || '');
       }
     }
+    if (postData.uid) {
+      const userRef = doc(fbstore, 'users', postData.uid)
+      const userSnap = await getDoc(userRef)
+      if (userSnap.exists()) {
+        sighting.value.nickname = userSnap.data().nickname
+        sighting.value.contact = userSnap.data().phone
+      } else {
+        sighting.value.nickname = '알 수 없음'
+      }
   } else {
     console.warn('문서를 찾을 수 없습니다.')
   }
-})
+  
+}})
+
+
 </script>
 
 <style scoped>
@@ -137,8 +149,10 @@ onMounted(async () => {
   grid-area: header;
   background: #fff;
   border-radius: 8px;
+  position: relative;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
   padding: 1rem;
+  height: 200px;
   --post-title-font: 1.1rem;
   --post-author-font: 0.8rem;
 }

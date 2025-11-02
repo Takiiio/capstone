@@ -26,13 +26,15 @@ const generateOverlayContent = (marker) => {
       display: flex;
       flex-direction: column;
       align-items: flex-start;
-      width: 200px;
+      max-width: 300px;
+      width: auto; 
+      word-break: break-word;
     ">
       <div style="margin-bottom: 8px;">
         <img src="${marker.photoUrl}" width="100%" height="100" style="object-fit: cover; border-radius: 4px;" />
       </div>
       <div style="font-weight: bold; margin-bottom: 5px;">${marker.title}</div>
-      <div style="color: #555; margin-bottom: 5px;">작성자: ${marker.author}</div>
+      <div style="color: #555; margin-bottom: 5px;">작성자: ${marker.nickname}</div>
       <div style="font-size: 0.9rem; color: #888;">${marker.date}</div>
       <div style="font-size: 0.9rem;">📍 ${marker.location}</div>
     </div>

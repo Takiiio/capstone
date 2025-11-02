@@ -298,13 +298,8 @@ const shareToInstagram = () => {
 }
 
 .detail-info {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 1rem;
-  display: grid;
-  grid-template-rows: auto auto;
-  gap: 1.5rem;
-  position: relative;
+  --sighting-header-font: 1.1rem;
+  --sighting-text-font: 0.8rem;
 }
 
 .detail-info img{
