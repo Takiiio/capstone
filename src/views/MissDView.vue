@@ -277,25 +277,30 @@ const deletePost = async () => {
 // 목격 게시글 목록
 onMounted(async () => {
   try {
-    const missingId = route.params.id   // 현재 보고 있는 실종 글 id
-    const q = query(
-      collection(fbstore, 'sightPosts'),
-      where('missingId', '==', missingId)
-    )
-    const snapshot = await getDocs(q)
+    const missingId = route.params.id;
+    const q = query(collection(fbstore, "sightPosts"), where("missingId", "==", missingId));
+    const snapshot = await getDocs(q);
 
-    sightings.value = snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    }))
+    const temp = [];
 
-    // 목격 주소 스토어 전달
-    store.setSightings(sightings.value)
-    
+    for (const d of snapshot.docs) {
+      const data = d.data();
+      let nickname = "작성자 미입력";
+
+      if (data.uid) {
+        const userSnap = await getDoc(doc(fbstore, "users", data.uid));
+        if (userSnap.exists()) nickname = userSnap.data().nickname || nickname;
+      }
+
+      temp.push({ id: d.id, nickname, ...data });
+    }
+
+    sightings.value = temp;
+    store.setSightings(temp);
   } catch (err) {
-    console.error('sightPosts 불러오기 실패:', err)
+    console.error("닉네임 포함 목격글 로드 실패:", err);
   }
-})
+});
 
 const goToSightW = (missingId) => {
   router.push({ name: 'sighting-write', params: { id: missingId } })

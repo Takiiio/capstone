@@ -156,10 +156,10 @@ watch(
               lat: parseFloat(result[0].y),
               lng: parseFloat(result[0].x),
               title: sighting.title,
-              author: sighting.authorNickname || '작성자',
+              nickname: sighting.nickname || '작성자',
               date: sighting.date,
               location: sighting.location,
-              photoUrl: sighting.photoUrl || ''
+              photoUrl: sighting.imageUrls?.[0] || ''
             });
         bounds.extend(new kakao.maps.LatLng(lat, lng));
         map.setBounds(bounds);
