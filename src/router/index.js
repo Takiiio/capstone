@@ -1,5 +1,9 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import MainView from '../views/MainView.vue'
+import QRGenerator from "../views/QRGenerator.vue";
+import RegisterPet from "../views/RegisterPet.vue";
+import PetInfo from "../views/PetInfo.vue";
+
 
 const routes = [
   {
@@ -80,6 +84,23 @@ const routes = [
     name: 'deposit',
     component: () => import('../views/DepositView.vue')
   },
+  {
+    path: '/qr-generator',
+    name: 'qr-generator',
+    component: QRGenerator
+  },
+  {
+    path: '/register-pet/:qrId?',
+    name: 'register-pet',
+    component: RegisterPet,
+    props: true // URL로 전달된 qrId를 props로 받을 수 있음
+  },
+  {
+    path: '/pet-info/:id',
+    name: 'pet-info',
+    component: PetInfo,
+    props: true
+  }
 ]
 
 const router = createRouter({
