@@ -133,7 +133,8 @@ import { ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import MapApiW from '@/components/MapApiW.vue'
 import { fbstore, storage } from '../firebaseConfig'
-import { collection, addDoc, doc, getDoc, updateDoc } from 'firebase/firestore'
+// ⭐️ serverTimestamp를 임포트하여 Firestore 서버 시간을 사용합니다.
+import { collection, addDoc, doc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore'
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage'
 import { getAuth } from 'firebase/auth'
 
@@ -150,7 +151,7 @@ const form = ref({
   animalName: '', gender: '', age: '', weight: '', color: '',
   date: '', time: '', breed: '', location: '', radius: '',
   warning: '', note: '', reward: '', status: 'y',
-  imageUrls: [] 
+  imageUrls: []
 })
 
 // 금칙어
@@ -158,6 +159,8 @@ const forbiddenWords = [
   '광고', '판매', '도박', '성인', '시발', 'ㅅㅂ', 'casino',
   'http', 'httpsV', '텔레그램', '카카오톡'
 ]
+
+// ... onFileChange, onMounted 함수는 이전과 동일 ...
 
 // 여러 장 파일 선택
 const onFileChange = (e) => {
@@ -214,6 +217,7 @@ onMounted(async () => {
   }
 })
 
+
 // 등록 및 수정 처리
 const handleSubmit = async () => {
   isSubmitted.value = true
@@ -221,6 +225,7 @@ const handleSubmit = async () => {
   const isValid = required.every(k => form.value[k]?.trim())
   if (!isValid) {
     alert("필수 항목을 모두 입력해주세요.")
+    isSubmitted.value = false // ⭐️ 유효성 검사 실패 시 제출 상태 해제
     return
   }
 
@@ -229,6 +234,7 @@ const handleSubmit = async () => {
   const containsForbidden = forbiddenWords.some(word => allText.includes(word))
   if (containsForbidden) {
     alert('내용에 부적절한 단어가 포함되어 있습니다.')
+    isSubmitted.value = false // ⭐️ 유효성 검사 실패 시 제출 상태 해제
     return
   }
 
@@ -237,47 +243,83 @@ const handleSubmit = async () => {
     const user = auth.currentUser
     if (!user) {
       alert("로그인이 필요합니다")
+      isSubmitted.value = false // ⭐️ 유효성 검사 실패 시 제출 상태 해제
       return
     }
 
-    // 이미지 업로드
+    // ⭐️ 1. 새로 업로드할 URL과 게시물 ID를 저장할 변수
+    const newlyUploadedUrls = []
+    let savedPostId = null;
+
+    // ⭐️ 2. 이미지 업로드 (기존 URL + 새 URL)
     let imageUrls = [...(form.value.imageUrls || [])]
     for (const file of selectedFiles.value) {
       const fileRef = storageRef(storage, `missingPhotos/${Date.now()}_${file.name}`)
       await uploadBytes(fileRef, file)
       const url = await getDownloadURL(fileRef)
       imageUrls.push(url)
+      newlyUploadedUrls.push(url) // ⭐️ 새로 업로드된 URL을 별도 저장
     }
 
     const postData = {
       ...form.value,
       imageUrls,
       uid: user.uid,
-      updatedAt: new Date()
+      updatedAt: serverTimestamp() // ⭐️ new Date() 대신 serverTimestamp() 사용
     }
 
+    // ⭐️ 3. 게시물 저장 (수정 또는 신규)
     if (isEditMode.value) {
-      // 수정 모드일 경우 updateDoc
-      const docRef = doc(fbstore, 'missingPosts', route.params.id)
+      // 수정 모드
+      savedPostId = route.params.id;
+      const docRef = doc(fbstore, 'missingPosts', savedPostId)
       await updateDoc(docRef, postData)
-      alert('게시글이 수정되었습니다.')
-      router.push({ name: 'missing-detail', params: { id: route.params.id } })
     } else {
       // 신규 등록
       const docRef = await addDoc(collection(fbstore, 'missingPosts'), {
         ...postData,
-        createdAt: new Date()
+        createdAt: serverTimestamp() // ⭐️ new Date() 대신 serverTimestamp() 사용
       })
-      alert('게시글이 등록되었습니다.')
-      router.push({ name: 'missing-detail', params: { id: docRef.id } })
+      savedPostId = docRef.id;
     }
+
+    // ⭐️ 4. Vertex AI 인덱싱 트리거 (새 이미지가 있을 경우)
+    if (newlyUploadedUrls.length > 0 && savedPostId) {
+      console.log(`Vector Search 인덱싱 트리거 (${newlyUploadedUrls.length}개의 새 이미지)...`);
+      const metadataCollectionRef = collection(fbstore, "image_metadata");
+      
+      for (const imageUrl of newlyUploadedUrls) {
+        try {
+          await addDoc(metadataCollectionRef, {
+            path: imageUrl,                  // 새 이미지 URL
+            status: "PENDING",               // Cloud Function이 감지할 상태
+            createdAt: serverTimestamp(),    // 서버 시간
+            originalPostId: savedPostId      // 원본 게시물 ID 연결
+          });
+          console.log(`[Vector Trigger] ${imageUrl}`);
+        } catch (triggerError) {
+          // 개별 트리거가 실패해도 사용자 흐름을 막지 않도록 로그만 남김
+          console.error("Vector Search 트리거 실패 (개별):", triggerError, imageUrl);
+        }
+      }
+    }
+
+    // ⭐️ 5. 모든 작업 완료 후 사용자 알림 및 이동
+    if (isEditMode.value) {
+      alert('게시글이 수정되었습니다.')
+      router.push({ name: 'missing-detail', params: { id: savedPostId } })
+    } else {
+      alert('게시글이 등록되었습니다.')
+      router.push({ name: 'missing-detail', params: { id: savedPostId } })
+    }
+
   } catch (err) {
     console.error("등록 실패:", err)
     alert("등록 중 오류가 발생했습니다.")
+    isSubmitted.value = false // ⭐️ 오류 발생 시 제출 상태 해제
   }
 }
 </script>
-
 
 <style scoped>
 .required::after {

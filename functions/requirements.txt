@@ -1,0 +1,9 @@
+firebase-admin>=6.0.0
+firebase_functions>=0.2.0
+
+google-cloud-aiplatform>=1.25.0
+google-cloud-firestore
+vertexai
+requests
+
+numpy

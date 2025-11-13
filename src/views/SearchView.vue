@@ -72,7 +72,7 @@
           style="display: none;" 
           @change="handleFileSelect"
           accept="image/*"
-        >
+        />
         
         <div v-if="!imagePreviewUrl">
           <svg class="file-input-icon" stroke="currentColor" fill="none" viewBox="0 0 48 48" aria-hidden="true"><path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
@@ -84,8 +84,13 @@
         </div>
       
 
-
-        <button 
+      <!-- ⭐️ 로딩 인디케이터 (추가) ⭐️ -->
+      <div v-if="isLoading" class="loading-indicator">
+           <p>유사한 이미지를 찾는 중입니다...</p>
+           <!-- (여기에 스피너 CSS/SVG 추가 가능) -->
+      </div>
+    </div>
+      <button 
          v-if="imagePreviewUrl && !isLoading"
          @click="startImageSearch"
          class="search-btn"
@@ -93,12 +98,6 @@
         >
          이 이미지로 검색
         </button>
-
-      <!-- ⭐️ 로딩 인디케이터 (추가) ⭐️ -->
-      <div v-if="isLoading" class="loading-indicator">
-           <p>유사한 이미지를 찾는 중입니다...</p>
-           <!-- (여기에 스피너 CSS/SVG 추가 가능) -->
-      </div>
       
       <!-- ⭐️ 이미지 검색 결과 (추가) ⭐️ -->
       <div v-if="!isLoading && isSearched">
@@ -112,8 +111,6 @@
       </div>
       <p v-else class="no-result">일치하는 게시물이 없습니다.</p>
       </div>
-
-      </div>
     </div>
   </div>
 </template>
@@ -122,22 +119,21 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { collection, getDocs } from 'firebase/firestore'
-// ⭐️ Firebase SDK 임포트 추가 (storage, functions 등)
-import { fbstore, storage, functions } from '../firebaseConfig'; 
-import { httpsCallable } from 'firebase/functions';
+import { fbstore, storage } from '../firebaseConfig'; 
+// import { httpsCallable } from 'firebase/functions' 
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
 import PetCard from '../components/PetCard.vue'
 
 const router = useRouter()
 
 const cityDistrictMap = {
- 서울특별시: ['강남구', '강동구', '강북구', '강서구', '관악구', '광진구', '구로구', '금천구', '노원구', '도봉구', '동대문구', '동작구', '마포구', '서대문구', '서초구', '성동구', '성북구', '송파구', '양천구', '영등포구', '용산구', '은평구', '종로구', '중구', '중랑구'],
+  서울특별시: ['강남구', '강동구', '강북구', '강서구', '관악구', '광진구', '구로구', '금천구', '노원구', '도봉구', '동대문구', '동작구', '마포구', '서대문구', '서초구', '성동구', '성북구', '송파구', '양천구', '영등포구', '용산구', '은평구', '종로구', '중구', '중랑구'],
 }
 
 // --- 1. 필터 검색 상태 ---
 const selectedCity = ref('')
 const selectedDistrict = ref('')
-const selectedGender = ref('')
+const selectedGender = ref(null) 
 const breed = ref('')
 const date = ref('')
 const isSearched = ref(false)
@@ -154,73 +150,79 @@ const imageName = ref('');
 const selectedFile = ref(null); // 실제 파일 객체 저장
 const isLoading = ref(false);     // 로딩 상태
 
-// ⭐️ Firebase Functions 호출 준비 (추가)
-const findSimilarFunction = httpsCallable(functions, 'find_similar');
+// ⭐️ (수정) on_request 함수는 배포 후 URL을 직접 사용합니다.
+// (배포 후) `firebase deploy --only functions` 로그에 표시되는 URL로 변경하세요.
+const FIND_SIMILAR_URL = "https://us-central1-capstone-12e6910598105066.cloudfunctions.net/find_similar";
 
+// ⭐️ (수정) httpsCallable을 사용하지 않습니다.
+// const findSimilarFunction = httpsCallable(functions, 'find_similar');
 
-// --- 3. 공통 로직 (onMounted) ---
+// --- 공통 로직 (onMounted) ---
 onMounted(async () => {
- try {
-   const querySnapshot = await getDocs(collection(fbstore, 'missingPosts'))
-  allPets.value = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
- } catch (error) {
-   console.error("데이터 로드 중 오류 발생:", error);
- }
+  // ⭐️ (수정) functions SDK가 필요 없으므로, config 파일 체크 로직 제거
+  try {
+    const querySnapshot = await getDocs(collection(fbstore, 'missingPosts'))
+    allPets.value = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+  } catch (error) {
+    console.error("데이터 로드 중 오류 발생:", error);
+  }
 })
 
-// --- 4. 필터 검색 메서드 ---
 function onCityChange() {
- selectedDistrict.value = ''
+  selectedDistrict.value = ''
 }
 
+// --- 필터링 검색 메서드 ---
 function searchPets() {
- isSearched.value = true
-  // 검색 버튼 클릭 시 filteredPets를 초기화하고 다시 필터링
- filteredPets.value = allPets.value.filter(pet => {
-   return (
-     (!selectedCity.value || pet.location?.includes(selectedCity.value)) &&
-     (!selectedDistrict.value || pet.location?.includes(selectedDistrict.value)) &&
-     (!selectedGender.value || pet.gender === selectedGender.value) &&
-     (!breed.value || pet.breed?.toLowerCase().includes(breed.value.toLowerCase())) &&
-     (!date.value || pet.date === date.value)
- )
- })
+  isSearched.value = true
+  filteredPets.value = allPets.value.filter(pet => {
+    return (
+      (!selectedCity.value || pet.location?.includes(selectedCity.value)) &&
+      (!selectedDistrict.value || pet.location?.includes(selectedDistrict.value)) &&
+      (!selectedGender.value || pet.gender === selectedGender.value) &&
+      (!breed.value || pet.breed?.toLowerCase().includes(breed.value.toLowerCase())) &&
+      (!date.value || pet.date === date.value)
+    )
+  })
 }
 
 function goToDetail(id) {
- router.push({ name: 'missing-detail', params: { id } })
+  router.push({ name: 'missing-detail', params: { id } })
 }
 
-// --- 5. 이미지 검색 메서드 ---
+// --- 이미지 검색 메서드 ---
 
 function triggerFileInput() {
- fileInput.value.click();
+  if (isLoading.value) return; 
+  fileInput.value.click();
 }
 
 function handleFileSelect(event) {
- processFile(event.target.files[0]);
+  processFile(event.target.files[0]);
 }
 
 function handleFileDrop(event) {
- processFile(event.dataTransfer.files[0]);
+  processFile(event.dataTransfer.files[0]);
 }
 
 function processFile(file) {
- if (!file || !file.type.startsWith('image/')) {
-   console.warn('이미지 파일만 업로드해 주세요.');
-  return;
- }
- 
- if (imagePreviewUrl.value) {
-   URL.revokeObjectURL(imagePreviewUrl.value);
- }
+  if (!file || !file.type.startsWith('image/')) {
+    console.warn('이미지 파일만 업로드해 주세요.');
+    return;
+  }
+  
+  if (imagePreviewUrl.value) {
+    URL.revokeObjectURL(imagePreviewUrl.value);
+  }
 
- imagePreviewUrl.value = URL.createObjectURL(file);
- imageName.value = file.name;
-  selectedFile.value = file; // ⭐️ 추가: 실제 파일 객체 저장
+  imagePreviewUrl.value = URL.createObjectURL(file);
+  imageName.value = file.name;
+  selectedFile.value = file;
+  isSearched.value = false;
+  filteredPets.value = [];
 }
 
-// ⭐️ '이미지로 검색' 버튼 클릭 시 (구현)
+// ⭐️ '이미지로 검색' 버튼 클릭 시 (수정: fetch 사용)
 async function startImageSearch() {
   if (!selectedFile.value) {
     console.warn("검색할 이미지가 선택되지 않았습니다.");
@@ -229,11 +231,11 @@ async function startImageSearch() {
   
   console.log(`'${imageName.value}' 파일로 이미지 검색을 시작합니다.`);
   isLoading.value = true;
-  isSearched.value = false; // 검색 시작 시 이전 결과 숨김
-  filteredPets.value = []; // 결과 목록 초기화
+  isSearched.value = false;
+  filteredPets.value = [];
 
   try {
-    // 1. Storage에 검색용 이미지 업로드
+    // 1. Storage에 검색용 이미지 업로드 (동일)
     const uniquePath = `searchQueries/${Date.now()}_${selectedFile.value.name}`;
     const sRef = storageRef(storage, uniquePath);
     const uploadTask = await uploadBytes(sRef, selectedFile.value);
@@ -241,36 +243,44 @@ async function startImageSearch() {
     
     console.log("검색 이미지 URL:", downloadURL);
 
-    // 2. Cloud Function (find_similar) 호출
-    const response = await findSimilarFunction({ 
-      image_url_query: downloadURL
+    // ⭐️ 2. (수정) httpsCallable 대신 'fetch'를 사용하여 on_request 함수 호출
+    const response = await fetch(FIND_SIMILAR_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      // ⭐️ on_request는 { data: ... } 래퍼가 필요 없습니다.
+      body: JSON.stringify({ 
+        image_url_query: downloadURL 
+      })
     });
 
-    // 3. 결과 처리
-    // backend/main.py는 { similar_images: [{ id: '...', path: '...', score: ..., originalPostId: '...' }] } 반환
-    const results = response.data.similar_images;
+    if (!response.ok) {
+      // ⭐️ fetch는 4xx, 5xx 오류를 catch로 던지지 않으므로 수동 처리
+      const errorData = await response.json();
+      throw new Error(errorData.error || `HTTP ${response.status} 오류`);
+    }
     
+    // ⭐️ (수정) fetch의 응답(response.json())이 바로 결과입니다.
+    const resultsData = await response.json();
+    const results = resultsData.similar_images;
+
+    // 3. 결과 처리 (동일)
     if (results && results.length > 0) {
-      // Vector Search 결과에서 originalPostId 목록 추출
-      // ⭐️ sightPosts 변수는 사용되지 않으므로 이 줄을 삭제합니다.
-      // const sightPosts = results.map(r => r.originalPostId);
-      
-      // ID 목록을 allPets에서 찾아 'pet' 객체로 매핑
-      // Vector Search가 반환한 순서대로 정렬
       const sortedFoundPets = results.map(result => {
         return allPets.value.find(pet => pet.id === result.originalPostId);
-      }).filter(Boolean); // (삭제된 게시물 등) null 값 제거
+      }).filter(Boolean); 
       
       filteredPets.value = sortedFoundPets;
     } else {
       filteredPets.value = [];
     }
     
-    isSearched.value = true; // ⭐️ 검색 완료, 결과 표시
+    isSearched.value = true; 
     
   } catch (error) {
     console.error("이미지 검색 실패:", error);
-    // TODO: 사용자에게 오류 알림 UI 표시
+    alert(`이미지 검색에 실패했습니다: ${error.message}`);
   } finally {
     isLoading.value = false;
   }
