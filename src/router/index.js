@@ -85,6 +85,11 @@ const routes = [
     component: () => import('../views/DepositView.vue')
   },
   {
+    path: '/miss/:id',   //상세보기
+    name: 'MissDView',
+    component: () => import('../views/MissDView.vue')
+  },
+  {
     path: '/qr-generator',
     name: 'qr-generator',
     component: QRGenerator

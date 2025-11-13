@@ -151,6 +151,7 @@ watch(
       if (status === kakao.maps.services.Status.OK) {
         const lat = parseFloat(result[0].y);
         const lng = parseFloat(result[0].x);
+
         extraMarkers.value.push({
               key: index,
               lat: parseFloat(result[0].y),
