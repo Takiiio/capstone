@@ -37,8 +37,11 @@ const generateQRCode = async () => {
     // 1️⃣ 고유 QR ID 생성
     const qrId = `QR-${Date.now()}`
 
+    // 2) 실행 환경 자동 감지
+    const baseUrl = window.location.origin
+
     // 2️⃣ QR 안에 들어갈 URL (스캔 시 이동할 경로)
-    const qrUrl = `http://localhost:8080/register/${qrId}`
+    const qrUrl = `${baseUrl}/register/${qrId}`
 
     // 3️⃣ Firestore에 QR 정보 저장 (컬렉션이 없으면 자동 생성됨)
     await addDoc(collection(db, "qrcodes"), {
