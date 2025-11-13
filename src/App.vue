@@ -12,7 +12,7 @@
             <router-link to="/missing-list" class="nav-link">실종 동물 찾기</router-link>
           </li>
           <li>
-            <router-link to="" class="nav-link" @click.prevent="handleWriteClick">실종 신고서 작성</router-link>
+          <router-link to="/qr-generator" class="nav-link">QR생성하기</router-link>
           </li>
           <li>
             <router-link to="/search" class="nav-link">검색하기</router-link>
@@ -59,13 +59,13 @@ const goToProfile = () => {
   router.push({ name: 'mypage' });
 };
 
-const handleWriteClick = () => {
-  if (user.value) {
-    router.push({ name: 'missing-write' })
-  } else {
-    alert('회원만 작성할 수 있습니다.')
-  }
-}
+// const handleWriteClick = () => {
+//   if (user.value) {
+//     router.push({ name: 'missing-write' })
+//   } else {
+//     alert('회원만 작성할 수 있습니다.')
+//   }
+// }
 
 watch(
   () => userStore.user,
