@@ -37,8 +37,8 @@ const generateQRCode = async () => {
     // 1️⃣ 고유 QR ID 생성
     const qrId = `QR-${Date.now()}`
 
-    // 현재 전체 경로(레포지토리 포함)
-    const baseUrl = window.location.origin + window.location.pathname.replace(/\/$/, "");
+    // 2) 실행 환경 자동 감지
+    const baseUrl =  window.location.origin + window.location.pathname.replace(/\/$/, "");
 
     // 2️⃣ QR 안에 들어갈 URL (스캔 시 이동할 경로)
     const qrUrl = `${baseUrl}/register/${qrId}`
