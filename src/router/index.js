@@ -95,8 +95,8 @@ const routes = [
     component: QRGenerator
   },
   {
-    path: '/register-pet/:qrId?',
-    name: 'register-pet',
+    path: '/register/:qrId?',
+    name: 'register',
     component: RegisterPet,
     props: true // URL로 전달된 qrId를 props로 받을 수 있음
   },

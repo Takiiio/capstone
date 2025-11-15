@@ -41,7 +41,7 @@ const generateQRCode = async () => {
     const baseUrl =  window.location.origin + window.location.pathname.replace(/\/$/, "");
 
     // 2️⃣ QR 안에 들어갈 URL (스캔 시 이동할 경로)
-    const qrUrl = `${baseUrl}#/register/${qrId}`
+    const qrUrl = `${baseUrl}/#/register-pet/${qrId}`
 
     // 3️⃣ Firestore에 QR 정보 저장 (컬렉션이 없으면 자동 생성됨)
     await addDoc(collection(db, "qrcodes"), {
