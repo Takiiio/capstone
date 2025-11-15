@@ -1,88 +1,125 @@
 <template>
   <div class="register-container">
-    <h2>반려동물 정보 등록</h2>
+    <h2>QR 코드 소유자 정보</h2>
 
-    <!-- QR 코드에서 불러온 ID 표시 -->
-    <p v-if="qrId">QR ID: {{ qrId }}</p>
+    <p v-if="uid">UID: {{ uid }}</p>
 
-    <!-- 입력 폼 -->
-    <form @submit.prevent="registerPet">
-      <div class="form-group">
-        <label>이름</label>
-        <input v-model="petName" placeholder="예: 초코" required />
-      </div>
+    <!-- 사용자 정보 -->
+    <ul>
+      <li class="form-group">
+        <strong>닉네임</strong>
+        <span>{{ user.nickname }}</span>
+      </li>
 
-      <div class="form-group">
-        <label>나이</label>
-        <input v-model="petAge" placeholder="예: 3살" required />
-      </div>
+      <li class="form-group">
+        <strong>이메일</strong>
+        <span>{{ user.email }}</span>
+      </li>
 
-      <div class="form-group">
-        <label>특징</label>
-        <textarea v-model="petDesc" placeholder="예: 사람을 잘 따르고 꼬리가 짧아요" />
-      </div>
+      <li class="form-group">
+        <strong>전화번호</strong>
+        <span>{{ user.phone }}</span>
+      </li>
+    </ul>
 
-      <button type="submit" :disabled="isLoading">
-        {{ isLoading ? "등록 중..." : "등록하기" }}
-      </button>
-    </form>
+    <h3 style="margin-top: 20px;">사용자가 작성한 실종 게시글</h3>
+
+    <p v-if="isLoadingPosts">게시글을 불러오는 중...</p>
+
+    <ul v-else-if="missingPosts.length > 0" class="list">
+      <li v-for="post in missingPosts" :key="post.id" class="list-item">
+        <strong>{{ post.title }}</strong>
+        <span class="date">{{ formatDate(post.createdAt) }}</span>
+      </li>
+    </ul>
+
+    <p v-else>작성한 실종 게시글이 없습니다.</p>
   </div>
 </template>
 
 <script setup>
-/* -------------------- 🔹 import 영역 -------------------- */
-import { ref } from "vue";
+import { ref, onMounted } from "vue";
 import { useRoute } from "vue-router";
-import { fbstore } from "../firebaseConfig"; // ✅ Firebase 설정 파일에서 Firestore 불러오기
-import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
+import { fbstore } from "../firebaseConfig";
+import {
+  doc,
+  getDoc,
+  collection,
+  query,
+  where,
+  orderBy,
+  getDocs,
+} from "firebase/firestore";
 
-// route.params.id에 QR ID가 담겨 있음
 const route = useRoute();
-const qrId = route.params.id || null;
+const qrid = route.params.id || null;  // ⭐ URL에서 QR 고유 ID 받기
 
-const petName = ref("");
-const petAge = ref("");
-const petDesc = ref("");
-const isLoading = ref(false);
+const user = ref({ nickname: "", email: "", phone: "" });
+const missingPosts = ref([]);
+const isLoadingPosts = ref(false);
 
-// ✅ 반려동물 등록 함수
-const registerPet = async () => {
-  if (!qrId) {
+const formatDate = (ts) => {
+  if (!ts) return "";
+  const date = ts.toDate ? ts.toDate() : ts;
+  return new Date(date).toLocaleDateString("ko-KR");
+};
+
+onMounted(async () => {
+  if (!qrid) {
+    alert("QR 코드가 올바르지 않습니다.");
+    return;
+  }
+
+  /* 1) QR 문서 조회 */
+  const qrRef = doc(fbstore, "qrcodes", qrid);
+  const qrSnap = await getDoc(qrRef);
+
+  if (!qrSnap.exists()) {
     alert("유효하지 않은 QR 코드입니다.");
     return;
   }
 
-  isLoading.value = true;
+  const ownerUid = qrSnap.data().ownerUid;  // ⭐ QR에 저장된 실제 사용자 UID
+
+  /* 2) users/ownerUid 정보 조회 */
+  const userRef = doc(fbstore, "users", ownerUid);
+  const userSnap = await getDoc(userRef);
+
+  if (userSnap.exists()) {
+    const data = userSnap.data();
+    user.value.nickname = data.nickname || "";
+    user.value.email = data.email || "";
+    user.value.phone = data.phone || "";
+  }
+
+  /* 3) 실종 게시글 조회 */
   try {
-    // 1️⃣ Firestore 문서 참조 (컬렉션: 'qrCodes', 문서: qrId)
-    const docRef = doc(fbstore, "qrCodes", qrId);
+    isLoadingPosts.value = true;
 
-    // 2️⃣ 기존 QR 문서 존재 확인
-    const docSnap = await getDoc(docRef);
-    if (!docSnap.exists()) {
-      alert("QR 코드 정보가 존재하지 않습니다. QR을 다시 생성해주세요.");
-      isLoading.value = false;
-      return;
-    }
+    const q = query(
+      collection(fbstore, "missingPosts"),
+      where("uid", "==", ownerUid),
+      orderBy("createdAt", "desc")
+    );
 
-    // 3️⃣ 새로운 반려동물 정보 저장 (QR ID 기반으로)
-    await setDoc(docRef, {
-      qrId: qrId,
-      name: petName.value,
-      age: petAge.value,
-      description: petDesc.value,
-      registeredAt: serverTimestamp(),
+    const result = [];
+    const snaps = await getDocs(q);
+
+    snaps.forEach((docSnap) => {
+      result.push({ id: docSnap.id, ...docSnap.data() });
     });
 
-    alert("반려동물 정보가 성공적으로 등록되었습니다!");
-  } catch (error) {
-    console.error("등록 중 오류 발생:", error);
-    alert("등록 중 오류가 발생했습니다. 콘솔을 확인해주세요.");
+    missingPosts.value = result;
+
+  } catch (e) {
+    console.error("게시글 로딩 오류:", e);
   } finally {
-    isLoading.value = false;
+    isLoadingPosts.value = false;
   }
-};
+});
 </script>
+
+
 
 <style scoped>
 .register-container {
@@ -135,4 +172,16 @@ button {
 button:hover {
   background-color: #8d7b68;
 }
+
+.list {
+  list-style: none;
+  padding-left: 0;
+  margin: 0;
+}
+
+.list-item {
+  padding: 8px 12px;
+  border-bottom: 1px solid #eee;
+}
+
 </style>

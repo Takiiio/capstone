@@ -16,53 +16,64 @@
 </template>
 
 <script setup>
-import { ref } from "vue"
-import QRCode from "qrcode" // ✅ npm install qrcode 필요
-import { getFirestore, collection, addDoc, serverTimestamp } from "firebase/firestore"
+import { ref } from "vue";
+import { useRoute } from "vue-router";
+import QRCode from "qrcode";
+import { fbstore } from "../firebaseConfig";
+import { setDoc, doc, serverTimestamp } from "firebase/firestore";
 
-// Firestore 초기화
-const db = getFirestore()
+const qrImage = ref("");
+const isGenerating = ref(false);
+const message = ref("");
 
-// 상태 변수
-const qrImage = ref("")      // 생성된 QR 이미지
-const isGenerating = ref(false) // 로딩 상태
-const message = ref("")      // 메시지 표시
+const route = useRoute();
+const uid = route.query.uid;   // 구매자로부터 넘어온 UID
 
-// ✅ QR 코드 생성 함수
 const generateQRCode = async () => {
   try {
-    isGenerating.value = true
-    message.value = ""
+    isGenerating.value = true;
 
-    // 1️⃣ 고유 QR ID 생성
-    const qrId = `QR-${Date.now()}`
+    if (!uid) {
+      alert("UID가 전달되지 않았습니다.");
+      return;
+    }
 
-    // 2) 실행 환경 자동 감지
-    const baseUrl =  window.location.origin + window.location.pathname.replace(/\/$/, "");
+    // QR 고유 ID 생성
+    const qrId = `QR-${Date.now()}-${Math.random().toString(36).substring(2, 10)}`;
 
-    // 2️⃣ QR 안에 들어갈 URL (스캔 시 이동할 경로)
-    const qrUrl = `${baseUrl}/#/register-pet/${qrId}`
+    // QR URL 생성
+    const baseUrl = window.location.origin + window.location.pathname.replace(/\/$/, "");
+    const qrUrl = `${baseUrl}#/user-info/${qrId}`;
 
-    // 3️⃣ Firestore에 QR 정보 저장 (컬렉션이 없으면 자동 생성됨)
-    await addDoc(collection(db, "qrcodes"), {
+    // qrcodes 컬렉션에 저장
+    await setDoc(doc(fbstore, "qrcodes", qrId), {
       qrId,
-      createdAt: serverTimestamp(),
-    })
+      ownerUid: uid,
+      qrUrl,
+      createdAt: serverTimestamp()
+    },  { merge: true });
 
-    // 4️⃣ QR 이미지 생성
-    qrImage.value = await QRCode.toDataURL(qrUrl)
+    // buyers에도 최근 QR 기록
+    await setDoc(doc(fbstore, "buyers", uid), {
+      lastQrId: qrId,
+      lastQrUpdatedAt: serverTimestamp()
+    }, { merge: true });
+
+    // QR 이미지 생성
+    qrImage.value = await QRCode.toDataURL(qrUrl);
 
     message.value = `✅ QR 생성 완료! 스캔 시 ${qrUrl} 로 이동합니다.`
-    console.log("QR 생성 성공:", qrUrl)
 
-  } catch (error) {
-    console.error("❌ QR 생성 오류:", error)
-    message.value = "QR 생성 중 오류가 발생했습니다. 콘솔을 확인하세요."
+  } catch (e) {
+    console.error(e);
+    message.value = "QR 생성 중 오류 발생";
   } finally {
-    isGenerating.value = false
+    isGenerating.value = false;
   }
-}
+};
+
 </script>
+
 
 <style scoped>
 .qr-container {

@@ -79,15 +79,38 @@
       </div>
 
       <!-- 반려동물 정보 카드 -->
+      <!-- 구매 내역 카드 -->
       <div class="card">
-        <h2><PawPrint class="icon" /> 내 반려동물</h2>
-        <ul>
-          <li v-for="pet in user.pets || []" :key="pet.id" style="margin-bottom: 8px;">
-            <strong>{{ pet.name }}</strong> ({{ pet.species }}, {{ pet.age }}살)
+        <h2><BadgeDollarSign class="icon" /> 구매 내역</h2>
+
+        <p v-if="isLoadingPurchases" class="loading">구매 내역을 불러오는 중...</p>
+
+        <ul v-else-if="purchaseHistory.length > 0" class="list">
+          <li
+            v-for="item in purchaseHistory"
+            :key="item.id"
+            class="list-item"
+          >
+            <strong
+              class="qr-link"
+              @click="goToQRDetail(item)"
+              style="cursor: pointer;"
+            >
+              {{ item.serviceType === 'basic' ? 'Basic 모델' : 'Premium 모델' }}
+            </strong>
+
+            <span class="status-badge">
+              금액: {{ item.amount.toLocaleString() }} 원
+            </span>
+
+            <span class="date">{{ formatDate(item.timestamp) }}</span>
           </li>
         </ul>
-        <p v-if="!user.pets || user.pets.length === 0">등록된 반려동물이 없습니다.</p>
+
+
+        <p v-else>구매 내역이 없습니다.</p>
       </div>
+
 
       <div class="card">
   <h2><FileText class="icon" /> 작성한 게시글</h2>
@@ -134,7 +157,7 @@
 </template>
 
 <script>
-import { User, Smile, Edit2, PawPrint, FileText, BadgeDollarSign } from "lucide-vue-next";
+import { User, Smile, Edit2, FileText, BadgeDollarSign } from "lucide-vue-next";
 import { onAuthStateChanged } from "firebase/auth";
 import { doc, getDoc, setDoc, collection, query, where, getDocs, orderBy } from "firebase/firestore";
 import { auth, fbstore } from "../firebaseConfig";
@@ -146,7 +169,6 @@ export default {
     User,
     Smile,
     Edit2,
-    PawPrint,
     FileText,
     BadgeDollarSign,
   },
@@ -158,6 +180,8 @@ export default {
       userPosts: [], // ✅ 내가 작성한 게시글
       isLoadingPosts: false, // ✅ 로딩 상태 추가
       userStore: null,
+      purchaseHistory: [],
+      isLoadingPurchases: false,
     };
   },
   created() {
@@ -211,7 +235,6 @@ export default {
         day: "numeric",
       });
     },
-
     // ✅ Firestore에서 내가 작성한 게시글 불러오기
     async fetchUserPosts(uid) {
       this.isLoadingPosts = true;
@@ -255,8 +278,44 @@ export default {
         this.isLoadingPosts = false; // ✅ 항상 false로 설정
       }
     },
-  },
+    async fetchPurchaseHistory(uid) {
+      this.isLoadingPurchases = true;
 
+      try {
+        const q = query(
+          collection(fbstore, "buyers"),
+          where("userId", "==", uid),
+          orderBy("timestamp", "desc")
+        );
+
+        const snap = await getDocs(q);
+        const history = [];
+
+        snap.forEach(docSnap => {
+          history.push({ id: docSnap.id, ...docSnap.data() });
+        });
+
+        this.purchaseHistory = history;
+      } catch (err) {
+        console.error("구매내역 로드 실패:", err);
+        alert("구매내역을 불러오는 중 오류가 발생했습니다.");
+      } finally {
+        this.isLoadingPurchases = false;
+      }
+    },
+    goToQRDetail(item) {
+      if (!item || !item.lastQrId) {
+        console.error("QR ID 없음:", item);
+        alert("QR 코드 정보가 없습니다.");
+        return;
+      }
+
+      this.$router.push({
+        name: "user-info",
+        params: { id: item.lastQrId }
+      });
+    }
+  },
   mounted() {
     onAuthStateChanged(auth, async (currentUser) => {
       if (currentUser) {
@@ -271,6 +330,8 @@ export default {
 
           // ✅ 게시글 목록 불러오기
           await this.fetchUserPosts(uid);
+          await this.fetchPurchaseHistory(uid);
+
         } catch (error) {
           console.error("유저 데이터 로드 실패:", error);
         }
@@ -279,6 +340,7 @@ export default {
       }
     });
   },
+  
 };
 </script>
 

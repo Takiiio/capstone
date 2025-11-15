@@ -45,48 +45,64 @@
 
 <script setup>
 import { ref } from 'vue';
-import { useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { fbstore } from '../firebaseConfig';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { setDoc, doc, serverTimestamp } from 'firebase/firestore';
+import { getAuth } from 'firebase/auth';
 
-// 쿼리값에서 가격, 서비스타입 받아오기
 const route = useRoute();
-const price = route.query.price;
-const serviceType = route.query.serviceType;
+const router = useRouter();
 
-// 사용자 입력값
+const auth = getAuth();
+
 const name = ref('');
 const phone = ref('');
 const address = ref('');
 
-// 무통장입금 처리 → Firebase에 저장
+const price = route.query.price;
+const serviceType = route.query.serviceType;
+
+// 구매 저장
 const saveToFirebase = async () => {
+  const user = auth.currentUser;
+  if (!user) {
+    alert("로그인 후 이용해주세요");
+    return;
+  }
+
   if (!name.value || !phone.value) {
-    alert('구매자명과 연락처는 필수입니다.');
+    alert("구매자명과 연락처는 필수입니다.");
     return;
   }
 
   const data = {
+    userId: user.uid,
     name: name.value,
     phone: phone.value,
-    address: serviceType !== 'basic' ? address.value : '',
+    address: serviceType !== "basic" ? address.value : "",
     amount: parseInt(price),
     serviceType,
-    paymentMethod: '무통장입금',
-    status: '입금대기',
-    timestamp: serverTimestamp()
+    paymentMethod: "무통장입금",
+    status: "입금대기",
+    timestamp: serverTimestamp(),
   };
 
   try {
-    await addDoc(collection(fbstore, 'buyers'), data);
-    alert('신청이 완료되었습니다! 입금 계좌는 "농협 123-4567-8900 (홍길동)"입니다.');
-    console.log('저장된 정보:', data);
-  } catch (error) {
-    console.error('저장 실패:', error);
-    alert('신청 중 오류가 발생했습니다.');
+    // 🔥 UID = buyers 문서 ID
+    await setDoc(doc(fbstore, 'buyers', user.uid), data, { merge: true });
+
+    alert("신청이 완료되었습니다!");
+
+    // 🔥 QR 생성 페이지로 uid 넘기기
+    router.push(`/qr-generator?uid=${user.uid}`);
+
+  } catch (err) {
+    console.error(err);
+    alert("오류가 발생했습니다.");
   }
 };
 </script>
+
 
 <style scoped>
 /* 스타일은 제공해주신 그대로 유지 */
