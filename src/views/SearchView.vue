@@ -49,7 +49,7 @@
           v-for="pet in filteredPets"
           :key="pet.id"
           :pet="pet"
-          @click="goToDetail(pet.id)"
+          @click="goToDetail(pet)"
         />
        </div>
        <p v-else class="no-result">일치하는 게시물이 없습니다.</p>
@@ -133,7 +133,7 @@ const cityDistrictMap = {
 // --- 1. 필터 검색 상태 ---
 const selectedCity = ref('')
 const selectedDistrict = ref('')
-const selectedGender = ref(null) 
+const selectedGender = ref('') 
 const breed = ref('')
 const date = ref('')
 const isSearched = ref(false)
@@ -159,35 +159,62 @@ const FIND_SIMILAR_URL = "https://us-central1-capstone-12e6910598105066.cloudfun
 
 // --- 공통 로직 (onMounted) ---
 onMounted(async () => {
-  // ⭐️ (수정) functions SDK가 필요 없으므로, config 파일 체크 로직 제거
   try {
-    const querySnapshot = await getDocs(collection(fbstore, 'missingPosts'))
-    allPets.value = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+    const missingPromise = getDocs(collection(fbstore, 'missingPosts'));
+    const sightingPromise = getDocs(collection(fbstore, 'sightPosts'));
+
+    // 두 컬렉션의 데이터를 동시에 요청
+    const [missingSnapshot, sightingSnapshot] = await Promise.all([missingPromise, sightingPromise]);
+
+    const missingData = missingSnapshot.docs.map(doc => ({ 
+      id: doc.id, 
+      ...doc.data(), 
+      postType: 'missing' // ⭐️ 라우팅을 위한 꼬리표
+    }));
+
+    const sightingData = sightingSnapshot.docs.map(doc => ({ 
+      id: doc.id, 
+      ...doc.data(), 
+      postType: 'sighting' // ⭐️ 라우팅을 위한 꼬리표
+    }));
+
+    // 두 데이터를 하나의 배열로 합침
+    allPets.value = [...missingData, ...sightingData];
+    console.log(`총 ${allPets.value.length}개의 게시물(실종+목격)을 로드했습니다.`);
+
   } catch (error) {
     console.error("데이터 로드 중 오류 발생:", error);
   }
-})
-
-function onCityChange() {
-  selectedDistrict.value = ''
-}
+});
 
 // --- 필터링 검색 메서드 ---
 function searchPets() {
-  isSearched.value = true
+  isSearched.value = true;
   filteredPets.value = allPets.value.filter(pet => {
-    return (
-      (!selectedCity.value || pet.location?.includes(selectedCity.value)) &&
-      (!selectedDistrict.value || pet.location?.includes(selectedDistrict.value)) &&
-      (!selectedGender.value || pet.gender === selectedGender.value) &&
-      (!breed.value || pet.breed?.toLowerCase().includes(breed.value.toLowerCase())) &&
-      (!date.value || pet.date === date.value)
-    )
-  })
+    
+    // ⭐️ 이 게시물이 'missing' 타입일 때만 필터 로직을 적용
+    if (pet.postType === 'missing') {
+      return (
+        (!selectedCity.value || pet.location?.includes(selectedCity.value)) &&
+        (!selectedDistrict.value || pet.location?.includes(selectedDistrict.value)) &&
+        (!selectedGender.value || pet.gender === selectedGender.value) &&
+        (!breed.value || pet.breed?.toLowerCase().includes(breed.value.toLowerCase())) &&
+        (!date.value || pet.date === date.value)
+      );
+    }
+    
+    // 'sighting' 게시물은 '필터링 검색' 결과에서 제외
+    return false;
+  });
 }
 
-function goToDetail(id) {
-  router.push({ name: 'missing-detail', params: { id } })
+function goToDetail(pet) { // ⭐️ id 대신 pet 객체를 받음
+  if (pet.postType === 'sighting') {
+    router.push({ name: 'sighting-detail', params: { id: pet.id } });
+  } else {
+    // 'missing' 또는 기본값
+    router.push({ name: 'missing-detail', params: { id: pet.id } });
+  }
 }
 
 // --- 이미지 검색 메서드 ---

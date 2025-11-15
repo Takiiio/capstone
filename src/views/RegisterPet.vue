@@ -29,7 +29,7 @@
     <ul v-else-if="missingPosts.length > 0" class="list">
       <li v-for="post in missingPosts" :key="post.id" class="list-item">
         <strong>{{ post.title }}</strong>
-        <span class="date">{{ formatDate(post.createdAt) }}</span>
+        <span class="date" @click="goToDetail(post.id)" style="cursor: pointer;">{{ formatDate(post.createdAt) }}</span>
       </li>
     </ul>
 
@@ -39,7 +39,7 @@
 
 <script setup>
 import { ref, onMounted } from "vue";
-import { useRoute } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import { fbstore } from "../firebaseConfig";
 import {
   doc,
@@ -117,6 +117,12 @@ onMounted(async () => {
     isLoadingPosts.value = false;
   }
 });
+
+const router = useRouter();
+
+function goToDetail(id) {
+  router.push({ name: "missing-detail", params: { id } });
+}
 </script>
 
 

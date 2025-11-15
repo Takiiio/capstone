@@ -84,11 +84,6 @@ const routes = [
     component: () => import('../views/DepositView.vue')
   },
   {
-    path: '/miss/:id',   //상세보기
-    name: 'MissDView',
-    component: () => import('../views/MissDView.vue')
-  },
-  {
     path: '/qr-generator',
     name: 'qr-generator',
     component: QRGenerator
@@ -99,19 +94,6 @@ const routes = [
     component: RegisterPet,
     props: true // URL로 전달된 qrId를 props로 받을 수 있음
   },
-  {
-    path: '/pet-info/:id',
-    name: 'pet-info',
-    component: () => import("../views/PetInfo.vue"),
-    props: true
-  },
-  {
-  path: '/qr-detail/:qrId',
-  name: 'qr-detail',
-  component: () => import('../views/QRDetail.vue'), 
-  props: true
-  }
-
 ]
 
 const router = createRouter({

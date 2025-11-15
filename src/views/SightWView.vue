@@ -40,7 +40,14 @@
           <td class="report-table-td-w">
              <input type="file" multiple accept="image/*" @change="onFileChange" />
           </td>
-          <td class="report-table-td">목격 날짜</td>
+        </tr>
+        <tr>
+          <td class="report-table-td">목격 위치</td>
+          <td class="report-table-td-w">
+            <input type="text" placeholder="목격 위치" v-model="form.location" :class="{ 'input-error': isSubmitted && !form.title }"/>
+            <MapApiW v-model="form.location" />
+          </td>
+          <td class="report-table-td">목격 일시</td>
           <td class="report-table-td-w">
             <div class="datetime-group">
               <input type="date" v-model="form.date" :class="{ 'input-error': isSubmitted && !form.title }" />
@@ -49,11 +56,6 @@
           </td>
         </tr>
         <tr>
-          <td class="report-table-td">목격 위치</td>
-          <td class="report-table-td-w">
-            <input type="text" placeholder="목격 위치" v-model="form.location" :class="{ 'input-error': isSubmitted && !form.title }"/>
-            <MapApiW v-model="form.location" />
-          </td>
           <td class="report-table-td">내용</td>
           <td class="report-table-td-w">
             <textarea placeholder="목격 내용을 입력하세요" v-model="form.content"></textarea>
@@ -73,7 +75,8 @@
 import { ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { fbstore, storage } from '../firebaseConfig'
-import { collection, addDoc } from 'firebase/firestore'
+// ⭐️ serverTimestamp를 임포트합니다.
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore'
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage'
 import { getAuth } from 'firebase/auth'
 import MapApiW from '@/components/MapApiW.vue'
@@ -83,9 +86,9 @@ const route = useRoute()
 
 // --- 상태 변수
 const isSubmitting = ref(false)
-const selectedFiles = ref([])    // 여러 장 업로드 파일
-const previewUrls = ref([])      // 로컬 미리보기
-const uploadProgress = ref(0)    // 전체 진행률
+const selectedFiles = ref([]) // 여러 장 업로드 파일
+const previewUrls = ref([]) // 로컬 미리보기
+const uploadProgress = ref(0) // 전체 진행률
 
 // --- 입력 폼
 const form = ref({
@@ -201,13 +204,15 @@ const handleSubmit = async () => {
       imageUrls: uploadedUrls,
       uid: user.uid,
       missingId: route.params.id || null,
-      createdAt: new Date()
+      createdAt: serverTimestamp() // ⭐️ new Date() 대신 serverTimestamp() 사용
     }
 
     let docRef
+    let savedPostId // ⭐️ 저장된 ID를 받기 위한 변수
     try {
       docRef = await addDoc(collection(fbstore, 'sightPosts'), postData)
-      console.log("✅ Firestore 저장 완료:", docRef.id)
+      savedPostId = docRef.id // ⭐️ ID 저장
+      console.log("✅ Firestore 저장 완료:", savedPostId)
     } catch (dbErr) {
       console.error("🚨 Firestore 저장 실패:", dbErr)
       alert("게시글 저장 중 오류가 발생했습니다.")
@@ -215,9 +220,31 @@ const handleSubmit = async () => {
       return
     }
 
-    // 6️⃣ 이동
+    // ⭐️ 6️⃣ Vertex AI 인덱싱 트리거 (새 이미지가 있을 경우)
+    if (uploadedUrls.length > 0 && savedPostId) {
+      console.log(`[Vector Trigger] ${uploadedUrls.length}개의 이미지 인덱싱 시작...`);
+      const metadataCollectionRef = collection(fbstore, "image_metadata");
+      
+      for (const imageUrl of uploadedUrls) {
+        try {
+          await addDoc(metadataCollectionRef, {
+            path: imageUrl,               // 새 이미지 URL
+            status: "PENDING",            // Cloud Function이 감지할 상태
+            createdAt: serverTimestamp(), // 서버 시간
+            originalPostId: savedPostId   // 원본 게시물 ID 연결
+          });
+          console.log(`[Vector Trigger] ${imageUrl} 등록`);
+        } catch (triggerError) {
+          // 개별 트리거가 실패해도 사용자 흐름을 막지 않도록 로그만 남김
+          console.error("Vector Search 트리거 실패 (개별):", triggerError, imageUrl);
+        }
+      }
+    }
+
+    // 7️⃣ 이동
     try {
-      router.push({ name: 'sighting-detail', params: { id: docRef.id } })
+      // ⭐️ 저장된 ID를 사용하여 이동
+      router.push({ name: 'sighting-detail', params: { id: savedPostId } }) 
     } catch (navErr) {
       console.error("🚨 페이지 이동 실패:", navErr)
       alert("게시글은 저장되었지만 이동 중 문제가 발생했습니다.")

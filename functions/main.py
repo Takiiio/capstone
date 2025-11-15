@@ -116,10 +116,12 @@ def on_image_created(event: firestore_fn.Event[firestore_fn.DocumentSnapshot]):
 
 
 # --- 4. HTTPS 함수 (유사 이미지 검색) ---
+# --- 4. HTTPS 함수 (유사 이미지 검색) ---
 @https_fn.on_request(region=LOCATION, timeout_sec=300)
 def find_similar(req: https_fn.Request) -> https_fn.Response:
     """CORS-safe 이미지 유사도 검색 엔드포인트"""
 
+    # (이 함수 내부에서만 필요한 모듈 임포트)
     import requests
     import json
     from vertexai.vision_models import Image
@@ -136,6 +138,7 @@ def find_similar(req: https_fn.Request) -> https_fn.Response:
     if origin and any(origin.lower().startswith(o.lower()) for o in allowed_origins):
         cors_headers["Access-Control-Allow-Origin"] = origin
     else:
+        # 로컬/테스트 환경을 위해 와일드카드(*)를 기본값으로 사용
         cors_headers["Access-Control-Allow-Origin"] = "*"
 
     # OPTIONS 사전 요청일 경우 즉시 응답
@@ -156,8 +159,17 @@ def find_similar(req: https_fn.Request) -> https_fn.Response:
         )
 
     try:
-        body = req.get_json(silent=True) or {}
+        # ⭐️⭐️⭐️ [수정됨] ⭐️⭐️⭐️
+        # req.get_json() 대신 req.json 프로퍼티를 사용합니다.
+        # Content-Type이 application/json이 아니거나 본문이 비어있으면
+        # 이 코드는 try...except 블록에 의해 500 오류로 잡힙니다.
+        body = req.json
+        
+        if not body:
+            raise ValueError("Request body is empty or not valid JSON.")
+
         image_url_query = body.get("image_url_query")
+        # ⭐️⭐️⭐️ [수정 완료] ⭐️⭐️⭐️
 
         if not image_url_query:
             return https_fn.Response(
@@ -228,6 +240,7 @@ def find_similar(req: https_fn.Request) -> https_fn.Response:
         )
 
     except Exception as e:
+        # req.json 파싱 실패 오류도 여기서 잡힙니다.
         print(f"❌ 유사 이미지 검색 오류: {e}")
         return https_fn.Response(
             json.dumps({"error": str(e)}),
