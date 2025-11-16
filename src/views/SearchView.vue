@@ -249,67 +249,88 @@ function processFile(file) {
   filteredPets.value = [];
 }
 
-// ⭐️ '이미지로 검색' 버튼 클릭 시 (수정: fetch 사용)
+// ⭐️ '이미지로 검색' 버튼 클릭 시
 async function startImageSearch() {
   if (!selectedFile.value) {
     console.warn("검색할 이미지가 선택되지 않았습니다.");
     return;
   }
-  
+
   console.log(`'${imageName.value}' 파일로 이미지 검색을 시작합니다.`);
   isLoading.value = true;
   isSearched.value = false;
   filteredPets.value = [];
 
   try {
-    // 1. Storage에 검색용 이미지 업로드 (동일)
+    // 1. Storage에 검색용 이미지 업로드
     const uniquePath = `searchQueries/${Date.now()}_${selectedFile.value.name}`;
     const sRef = storageRef(storage, uniquePath);
     const uploadTask = await uploadBytes(sRef, selectedFile.value);
     const downloadURL = await getDownloadURL(uploadTask.ref);
-    
-    console.log("검색 이미지 URL:", downloadURL);
 
-    // ⭐️ 2. (수정) httpsCallable 대신 'fetch'를 사용하여 on_request 함수 호출
+    console.log("[ImageSearch] 업로드된 이미지 URL:", downloadURL);
+
+    // 2. Cloud Function 호출
     const response = await fetch(FIND_SIMILAR_URL, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      // ⭐️ on_request는 { data: ... } 래퍼가 필요 없습니다.
-      body: JSON.stringify({ 
-        image_url_query: downloadURL 
-      })
+      body: JSON.stringify({
+        image_url_query: downloadURL,
+      }),
     });
 
     if (!response.ok) {
-      // ⭐️ fetch는 4xx, 5xx 오류를 catch로 던지지 않으므로 수동 처리
-      const errorData = await response.json();
+      const errorData = await response.json().catch(() => ({}));
       throw new Error(errorData.error || `HTTP ${response.status} 오류`);
     }
-    
-    // ⭐️ (수정) fetch의 응답(response.json())이 바로 결과입니다.
-    const resultsData = await response.json();
-    const results = resultsData.similar_images;
 
-    // 3. 결과 처리
-    if (results && results.length > 0) {
-      // 🔹 1) originalPostId 기준으로 중복 제거
+    const resultsData = await response.json();
+    const results = resultsData.similar_images || [];
+
+    const MIN_SCORE = 0.7;
+
+    if (results.length > 0) {
+      console.group("[ImageSearch] Cloud Function 유사도 결과");
+      results.forEach((r, idx) => {
+        const pet = allPets.value.find(p => p.id === r.originalPostId);
+        console.log(
+          `#${idx + 1}`,
+          `score=${r.score?.toFixed ? r.score.toFixed(4) : r.score}`,
+          `postId=${r.originalPostId}`,
+          `type=${pet?.postType || "unknown"}`,
+          `title=${pet?.title || "(제목 없음)"}`
+        );
+      });
+      console.groupEnd();
+
+      // 1) 게시글 기준 중복 제거
       const seenPostIds = new Set();
       const uniqueResults = [];
 
       for (const r of results) {
-        if (!r.originalPostId) continue;        // 안전하게 방어
-        if (seenPostIds.has(r.originalPostId)) {
-          continue;                             // 이미 나온 게시글이면 스킵
-        }
+        if (!r.originalPostId) continue;
+        if (seenPostIds.has(r.originalPostId)) continue;
         seenPostIds.add(r.originalPostId);
-        uniqueResults.push(r);                  // 이 게시글은 처음이니까 채택
+        uniqueResults.push(r);
       }
 
-      // 🔹 2) uniqueResults는 이미 score 순으로 정렬되어 있음
-      const sortedFoundPets = uniqueResults
-        .map(result => allPets.value.find(pet => pet.id === result.originalPostId))
+      console.log(
+        `[ImageSearch] 중복 제거 후 게시글 개수: ${uniqueResults.length}`
+      );
+
+      // 2) 임계값으로 한 번 더 필터링
+      const highScoreResults = uniqueResults.filter(
+        r => typeof r.score === "number" && r.score >= MIN_SCORE
+      );
+
+      console.log(
+        `[ImageSearch] 임계값 ${MIN_SCORE} 이상 결과 개수: ${highScoreResults.length}`
+      );
+
+      const sortedFoundPets = highScoreResults
+        .map(r => allPets.value.find(pet => pet.id === r.originalPostId))
         .filter(Boolean);
 
       filteredPets.value = sortedFoundPets;
@@ -317,9 +338,8 @@ async function startImageSearch() {
       filteredPets.value = [];
     }
 
-    isSearched.value = true;
 
-    
+    isSearched.value = true;
   } catch (error) {
     console.error("이미지 검색 실패:", error);
     alert(`이미지 검색에 실패했습니다: ${error.message}`);

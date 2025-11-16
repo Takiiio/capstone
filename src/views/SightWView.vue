@@ -282,7 +282,7 @@ const handleSubmit = async () => {
       return
     }
 
-    // 7️⃣ Vertex AI 인덱싱 트리거 (✅ 동물 사진만)
+    // 7️Vertex AI 인덱싱 트리거 (동물 사진만)
     if (imageUrlsAnimal.length > 0 && savedPostId) {
       console.log(`[Vector Trigger] 동물 사진 ${imageUrlsAnimal.length}개 인덱싱 시작...`)
       const metadataCollectionRef = collection(fbstore, 'image_metadata')
@@ -293,8 +293,8 @@ const handleSubmit = async () => {
             path: imageUrl,               // 동물 사진 URL
             status: 'PENDING',            // Cloud Function이 감지할 상태
             createdAt: serverTimestamp(), // 서버 시간
-            originalPostId: savedPostId,  // ✅ 목격 신고(sightPosts) ID 연결
-            imageType: 'animal'           // 선택: 타입 명시(필요시 활용)
+            originalPostId: savedPostId,  // 목격 신고(sightPosts) ID 연결
+            imageType: 'animal'           
           })
           console.log(`[Vector Trigger - Animal] ${imageUrl} 등록`)
         } catch (triggerError) {

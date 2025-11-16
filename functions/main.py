@@ -13,7 +13,7 @@ PROJECT_ID = "capstone-12e6910598105066"
 LOCATION = "us-central1"
 
 
-# 🔹 Firestore, Firebase Admin, Vertex 초기화 (최대한 단순하게)
+# Firestore, Firebase Admin, Vertex 초기화 (최대한 단순하게)
 def init_services():
     # Firebase Admin
     if not firebase_admin._apps:
@@ -27,7 +27,7 @@ def init_services():
     return db, model
 
 
-# 🔹 코사인 유사도 (단순 버전)
+# 코사인 유사도 (단순 버전)
 def cosine_similarity(v1, v2):
     v1 = np.array(v1)
     v2 = np.array(v2)
@@ -36,7 +36,7 @@ def cosine_similarity(v1, v2):
     return float(num / den) if den != 0 else 0.0
 
 
-# 🔹 HTTPS 함수 (유사 이미지 검색)
+# HTTPS 함수 (유사 이미지 검색)
 @https_fn.on_request(
     region=LOCATION,
     timeout_sec=300,
@@ -82,7 +82,7 @@ def find_similar(req: https_fn.Request) -> https_fn.Response:
                 headers={"Content-Type": "application/json"},
             )
 
-        print(f"🎯 유사 이미지 검색 시작: {image_url_query}")
+        print(f"유사 이미지 검색 시작: {image_url_query}")
 
         # 5) 기준 이미지 다운로드 → 임베딩 구하기
         resp = requests.get(image_url_query)
@@ -148,7 +148,7 @@ def find_similar(req: https_fn.Request) -> https_fn.Response:
     except requests.exceptions.HTTPError as he:
         # 기준 이미지 다운로드 실패
         status_code = he.response.status_code if he.response else 503
-        print(f"❌ 이미지 다운로드 실패: {he}")
+        print(f"이미지 다운로드 실패: {he}")
         return https_fn.Response(
             json.dumps(
                 {"error": f"이미지를 다운로드할 수 없습니다. HTTP {status_code}"}
@@ -159,7 +159,7 @@ def find_similar(req: https_fn.Request) -> https_fn.Response:
 
     except Exception as e:
         # 나머지 모든 에러
-        print(f"❌ 유사 이미지 검색 오류: {e}")
+        print(f"유사 이미지 검색 오류: {e}")
         return https_fn.Response(
             json.dumps({"error": str(e)}),
             status=500,
