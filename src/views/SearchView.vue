@@ -292,18 +292,33 @@ async function startImageSearch() {
     const resultsData = await response.json();
     const results = resultsData.similar_images;
 
-    // 3. 결과 처리 (동일)
+    // 3. 결과 처리
     if (results && results.length > 0) {
-      const sortedFoundPets = results.map(result => {
-        return allPets.value.find(pet => pet.id === result.originalPostId);
-      }).filter(Boolean); 
-      
+      // 🔹 1) originalPostId 기준으로 중복 제거
+      const seenPostIds = new Set();
+      const uniqueResults = [];
+
+      for (const r of results) {
+        if (!r.originalPostId) continue;        // 안전하게 방어
+        if (seenPostIds.has(r.originalPostId)) {
+          continue;                             // 이미 나온 게시글이면 스킵
+        }
+        seenPostIds.add(r.originalPostId);
+        uniqueResults.push(r);                  // 이 게시글은 처음이니까 채택
+      }
+
+      // 🔹 2) uniqueResults는 이미 score 순으로 정렬되어 있음
+      const sortedFoundPets = uniqueResults
+        .map(result => allPets.value.find(pet => pet.id === result.originalPostId))
+        .filter(Boolean);
+
       filteredPets.value = sortedFoundPets;
     } else {
       filteredPets.value = [];
     }
-    
-    isSearched.value = true; 
+
+    isSearched.value = true;
+
     
   } catch (error) {
     console.error("이미지 검색 실패:", error);
