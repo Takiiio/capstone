@@ -28,8 +28,8 @@
 
     <ul v-else-if="missingPosts.length > 0" class="list">
       <li v-for="post in missingPosts" :key="post.id" class="list-item">
-        <strong>{{ post.title }}</strong>
-        <span class="date" @click="goToDetail(post.id)" style="cursor: pointer;">{{ formatDate(post.createdAt) }}</span>
+        <strong @click="goToDetail(post.id)" style="cursor: pointer;">{{ post.title }}</strong>
+        <span class="date">{{ formatDate(post.createdAt) }}</span>
       </li>
     </ul>
 
