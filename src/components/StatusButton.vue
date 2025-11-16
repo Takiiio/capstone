@@ -20,7 +20,7 @@ const props = defineProps({
 const statusLabel = computed(() => {
   if (props.status === 'y') return '찾는중';
   if (props.status === 'n') return '찾음';
-  return '상태없음';
+  return '목격';
 });
 
 // CSS 클래스

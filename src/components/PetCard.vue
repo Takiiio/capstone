@@ -48,7 +48,7 @@ export default {
     statusLabel() {
       if (this.pet.status === 'y') return '찾는중'
       if (this.pet.status === 'n') return '찾음'
-      return '상태없음'
+      return '목격'
     },
     statusClass() {
       return this.pet.status === 'y' ? 'incomplete' : 'complete'
