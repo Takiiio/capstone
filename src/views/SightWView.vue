@@ -93,19 +93,15 @@ import MapApiW from '@/components/MapApiW.vue'
 const router = useRouter()
 const route = useRoute()
 
-// --- 상태 변수
-const isSubmitting = ref(false)   // 중복 제출 방지용
-const isSubmitted = ref(false)    // 검증 시 UI 표시용 (template에서 사용)
-const uploadProgress = ref(0)     // 전체 진행률
+const isSubmitting = ref(false)
+const isSubmitted = ref(false)
+const uploadProgress = ref(0)
 
-// 🔹 동물 / 장소 파일 분리
-const animalFiles = ref([])       // 동물 사진 원본 파일들
-const placeFiles = ref([])        // 장소 사진 원본 파일들
+const animalFiles = ref([])
+const placeFiles = ref([])
 
-// 🔹 미리보기 (필요하면 통합해서 사용)
 const previewUrls = ref([])
 
-// --- 입력 폼
 const form = ref({
   title: '',
   contactPublic: 'public',
@@ -115,13 +111,11 @@ const form = ref({
   content: ''
 })
 
-// --- 금칙어 필터
 const forbiddenWords = [
   '광고', '판매', '도박', '성인', '시발', 'ㅅㅂ', 'casino',
   'http', 'httpsV', '텔레그램', '카카오톡'
 ]
 
-// 🔹 공통: 미리보기 URL 갱신
 const updatePreviewUrls = () => {
   previewUrls.value = [
     ...animalFiles.value.map(f => URL.createObjectURL(f)),
@@ -129,19 +123,16 @@ const updatePreviewUrls = () => {
   ]
 }
 
-// --- 동물 사진 선택 핸들러
 const onAnimalFileChange = (e) => {
   const files = Array.from(e.target.files || [])
   if (files.length === 0) return
 
-  // 파일 개수 제한 (예: 동물 사진 최대 5장)
   if (files.length > 5) {
     alert('동물 사진은 최대 5장까지만 업로드할 수 있습니다.')
     e.target.value = ''
     return
   }
 
-  // 파일 용량 제한 (10MB 이하)
   const maxSize = 10 * 1024 * 1024
   const invalid = files.find(f => f.size > maxSize)
   if (invalid) {
@@ -154,19 +145,16 @@ const onAnimalFileChange = (e) => {
   updatePreviewUrls()
 }
 
-// --- 장소 사진 선택 핸들러
 const onPlaceFileChange = (e) => {
   const files = Array.from(e.target.files || [])
   if (files.length === 0) return
 
-  // 파일 개수 제한 (예: 장소 사진 최대 5장)
   if (files.length > 5) {
     alert('장소 사진은 최대 5장까지만 업로드할 수 있습니다.')
     e.target.value = ''
     return
   }
 
-  // 파일 용량 제한 (10MB 이하)
   const maxSize = 10 * 1024 * 1024
   const invalid = files.find(f => f.size > maxSize)
   if (invalid) {
@@ -179,14 +167,12 @@ const onPlaceFileChange = (e) => {
   updatePreviewUrls()
 }
 
-// --- 신고서 제출
 const handleSubmit = async () => {
   if (isSubmitting.value) return
   isSubmitting.value = true
   isSubmitted.value = true
 
   try {
-    // 1️⃣ 필수값 체크
     const required = ['title', 'contactPublic', 'date']
     const isValid = required.every(k => form.value[k]?.trim())
     if (!isValid) {
@@ -195,7 +181,6 @@ const handleSubmit = async () => {
       return
     }
 
-    // 2️⃣ 로그인 확인
     const auth = getAuth()
     const user = auth.currentUser
     if (!user) {
@@ -204,7 +189,6 @@ const handleSubmit = async () => {
       return
     }
 
-    // 3️⃣ 금칙어 검사
     const allText = Object.values(form.value).join(' ').toLowerCase()
     const containsForbidden = forbiddenWords.some(word => allText.includes(word))
     if (containsForbidden) {
@@ -213,21 +197,18 @@ const handleSubmit = async () => {
       return
     }
 
-    // 4️⃣ 파일 존재 검사 (동물/장소 합쳐서 최소 1장)
     if (animalFiles.value.length === 0 && placeFiles.value.length === 0) {
       alert('사진을 1장 이상 업로드해주세요.')
       isSubmitting.value = false
       return
     }
 
-    // 5️⃣ 파일 업로드 (동물 / 장소 구분)
     const imageUrlsAnimal = []
     const placeImageUrls = []
 
     const totalFiles = animalFiles.value.length + placeFiles.value.length
     let processedCount = 0
 
-    // 🔹 동물 사진 업로드
     for (const file of animalFiles.value) {
       const uniqueName = `animal_${Date.now()}_${file.name}`
       const fileRef = storageRef(storage, `sightPosts/animal/${uniqueName}`)
@@ -237,10 +218,9 @@ const handleSubmit = async () => {
 
       processedCount++
       uploadProgress.value = ((processedCount / totalFiles) * 100).toFixed(1)
-      console.log(`✅ [동물 ${processedCount}/${totalFiles}] 업로드 완료: ${url}`)
+      console.log(`[동물 ${processedCount}/${totalFiles}] 업로드 완료: ${url}`)
     }
 
-    // 🔹 장소 사진 업로드
     for (const file of placeFiles.value) {
       const uniqueName = `place_${Date.now()}_${file.name}`
       const fileRef = storageRef(storage, `sightPosts/place/${uniqueName}`)
@@ -250,7 +230,7 @@ const handleSubmit = async () => {
 
       processedCount++
       uploadProgress.value = ((processedCount / totalFiles) * 100).toFixed(1)
-      console.log(`✅ [장소 ${processedCount}/${totalFiles}] 업로드 완료: ${url}`)
+      console.log(`[장소 ${processedCount}/${totalFiles}] 업로드 완료: ${url}`)
     }
 
     if (imageUrlsAnimal.length === 0 && placeImageUrls.length === 0) {
@@ -259,13 +239,12 @@ const handleSubmit = async () => {
       return
     }
 
-    // 6️⃣ Firestore 저장 (missingId 포함, ✅ 유지)
     const postData = {
       ...form.value,
-      imageUrlsAnimal,               // 동물 사진 URL 배열
-      placeImageUrls,                // 장소 사진 URL 배열
+      imageUrlsAnimal,
+      placeImageUrls,
       uid: user.uid,
-      missingId: route.params.id || null, // ✅ 기존처럼 missingId 연결 유지
+      missingId: route.params.id || null,
       createdAt: serverTimestamp()
     }
 
@@ -274,15 +253,15 @@ const handleSubmit = async () => {
     try {
       docRef = await addDoc(collection(fbstore, 'sightPosts'), postData)
       savedPostId = docRef.id
-      console.log('✅ Firestore 저장 완료:', savedPostId)
+      console.log('Firestore 저장 완료:', savedPostId)
     } catch (dbErr) {
-      console.error('🚨 Firestore 저장 실패:', dbErr)
+      console.error('Firestore 저장 실패:', dbErr)
       alert('게시글 저장 중 오류가 발생했습니다.')
       isSubmitting.value = false
       return
     }
 
-    // 7️Vertex AI 인덱싱 트리거 (동물 사진만)
+    // 7️Vertex AI 인덱싱 트리거
     if (imageUrlsAnimal.length > 0 && savedPostId) {
       console.log(`[Vector Trigger] 동물 사진 ${imageUrlsAnimal.length}개 인덱싱 시작...`)
       const metadataCollectionRef = collection(fbstore, 'image_metadata')
@@ -290,10 +269,11 @@ const handleSubmit = async () => {
       for (const imageUrl of imageUrlsAnimal) {
         try {
           await addDoc(metadataCollectionRef, {
-            path: imageUrl,               // 동물 사진 URL
-            status: 'PENDING',            // Cloud Function이 감지할 상태
-            createdAt: serverTimestamp(), // 서버 시간
-            originalPostId: savedPostId,  // 목격 신고(sightPosts) ID 연결
+            path: imageUrl,
+            status: 'PENDING',
+            // Cloud Function이 감지할 상태
+            createdAt: serverTimestamp(),
+            originalPostId: savedPostId,
             imageType: 'animal'           
           })
           console.log(`[Vector Trigger - Animal] ${imageUrl} 등록`)
@@ -307,7 +287,6 @@ const handleSubmit = async () => {
       }
     }
 
-    // 8️⃣ 이동
     try {
       router.push({ name: 'sighting-detail', params: { id: savedPostId } })
     } catch (navErr) {

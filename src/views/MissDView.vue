@@ -141,7 +141,7 @@ import StatusButton from '@/components/StatusButton.vue';
 
 const store = useLocationStore();
 const isLoaded = ref(false);
-const showMenu = ref(false) // 점3개 메뉴 상태
+const showMenu = ref(false);
 
 const router = useRouter()
 const route = useRoute()
@@ -172,7 +172,7 @@ onMounted(async () => {
     
     store.setMissingAddress(postData.location || '');
 
-    // uid(authorId) 가져오기
+    // uid 가져오기
     if (postData.uid) {
       const userRef = doc(fbstore, 'users', postData.uid)
       const userSnap = await getDoc(userRef)
@@ -192,15 +192,6 @@ onMounted(async () => {
   }
 })
 
-// // ✅ 이미지 분리
-// const animalPhotos = computed(() =>
-//   (missing.value.imageUrls || []).slice(0, 3).filter(Boolean)
-// )
-
-// const placePhotos = computed(() =>
-//   (missing.value.imageUrls || []).slice(3, 6).filter(Boolean)
-// )
-
 const toggleMenu = () => {
   showMenu.value = !showMenu.value
 }
@@ -219,15 +210,15 @@ const editPost = () => {
     return;
   }
 
-  // ✅ 작성자만 수정 가능
+  // 작성자만 수정 가능
   if (missing.value.uid !== user.uid) {
     alert("본인 게시글만 수정할 수 있습니다.");
     return;
   }
 
-  // ✅ 수정 페이지로 이동
+  // 수정 페이지로 이동
   router.push({
-    name: "missing-write", // ← 네 라우터 이름에 맞게 변경 가능
+    name: "missing-write", 
     params: { id: route.params.id },
   });
 

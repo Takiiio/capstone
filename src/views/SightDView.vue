@@ -74,13 +74,12 @@ import MapApiD from '@/components/MapApiD.vue'
 const store = useLocationStore()
 const route = useRoute()
 
-// ✅ imageUrls로 맞춤
 const sighting = ref({
   title: '',
   date: '',
   time: '',
   address: '',
-  imageUrls: [], // ✅ 복수형으로 수정
+  imageUrls: [],
   phoneno: '',
   contactPublic: 'private',
   missingId: '',
@@ -98,7 +97,7 @@ onMounted(async () => {
 
     store.setSightingAddress(postData.location || '')
 
-    // ✅ 연결된 실종 위치 불러오기
+    // 실종 위치
     if (postData.missingId) {
       const missingRef = doc(fbstore, 'missingPosts', postData.missingId)
       const missingSnap = await getDoc(missingRef)
@@ -108,7 +107,7 @@ onMounted(async () => {
       }
     }
 
-    // ✅ 작성자 정보 불러오기
+    // 작성자 정보
     if (postData.uid) {
       const userRef = doc(fbstore, 'users', postData.uid)
       const userSnap = await getDoc(userRef)

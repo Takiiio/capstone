@@ -134,14 +134,12 @@ const route = useRoute()
 const isSubmitted = ref(false)
 const isEditMode = ref(false)
 
-// 🔹 동물 / 장소 파일 분리
-const animalFiles = ref([])   // 동물 사진 원본 파일
-const placeFiles = ref([])    // 장소 사진 원본 파일
+// 동물 / 장소 파일 분리
+const animalFiles = ref([])
+const placeFiles = ref([])
 
-// 🔹 미리보기(합쳐서 사용)
 const previewImages = ref([])
 
-// 🔹 폼 데이터: 타입 분리
 const form = ref({
   title: '',
   contactPublic: 'public',
@@ -159,17 +157,15 @@ const form = ref({
   note: '',
   reward: '',
   status: 'y',
-  imageUrlsAnimal: [],  // 🔥 동물 사진 URL 리스트
-  imageUrlsPlace: []    // 🔥 장소 사진 URL 리스트
+  imageUrlsAnimal: [],
+  imageUrlsPlace: []
 })
 
-// 금칙어
 const forbiddenWords = [
   '광고', '판매', '도박', '성인', '시발', 'ㅅㅂ', 'casino',
   'http', 'httpsV', '텔레그램', '카카오톡'
 ]
 
-// 🔹 미리보기 갱신 공통 함수
 const updatePreviewImages = () => {
   previewImages.value = [
     ...animalFiles.value.map(file => URL.createObjectURL(file)),
@@ -177,7 +173,6 @@ const updatePreviewImages = () => {
   ]
 }
 
-// 🔹 동물 사진 선택 핸들러
 const onAnimalFileChange = (e) => {
   const files = Array.from(e.target.files || [])
   if (files.length === 0) return
@@ -200,7 +195,6 @@ const onAnimalFileChange = (e) => {
   updatePreviewImages()
 }
 
-// 🔹 장소 사진 선택 핸들러
 const onPlaceFileChange = (e) => {
   const files = Array.from(e.target.files || [])
   if (files.length === 0) return
@@ -223,7 +217,7 @@ const onPlaceFileChange = (e) => {
   updatePreviewImages()
 }
 
-// 🔹 수정 모드일 경우 데이터 불러오기
+// 수정
 onMounted(async () => {
   const id = route.params.id
   if (!id) return // 새 글 작성 모드
@@ -236,16 +230,15 @@ onMounted(async () => {
   if (docSnap.exists()) {
     const data = docSnap.data()
 
-    // 기존 폼에 Firestore 데이터 덮어쓰기
+    // Firestore 데이터 덮어쓰기
     form.value = {
       ...form.value,
       ...data,
-      // 혹시 필드가 없을 수도 있으니 기본값 보장
+      // 기본값
       imageUrlsAnimal: data.imageUrlsAnimal || [],
       imageUrlsPlace: data.imageUrlsPlace || []
     }
 
-    // 로그인한 사용자만 수정 가능
     const auth = getAuth()
     const user = auth.currentUser
     if (!user || user.uid !== data.uid) {
@@ -253,8 +246,6 @@ onMounted(async () => {
       router.back()
       return
     }
-
-    // 🔹 미리보기: 기존 URL들을 그대로 사용 (파일이 아니라 URL이므로 그냥 배열만)
     previewImages.value = [
       ...(form.value.imageUrlsAnimal || []),
       ...(form.value.imageUrlsPlace || [])
@@ -265,7 +256,7 @@ onMounted(async () => {
   }
 })
 
-// 🔹 등록 및 수정 처리
+// 등록 및 수정
 const handleSubmit = async () => {
   isSubmitted.value = true
   const required = ['title', 'contactPublic', 'animalName', 'date', 'location']
@@ -276,7 +267,6 @@ const handleSubmit = async () => {
     return
   }
 
-  // 금칙어 검사
   const allText = Object.values(form.value).join(' ').toLowerCase()
   const containsForbidden = forbiddenWords.some(word => allText.includes(word))
   if (containsForbidden) {
@@ -294,12 +284,12 @@ const handleSubmit = async () => {
       return
     }
 
-    // 🔹 새로 업로드할 URL들(타입별로 분리)
+    // 새로 업로드할 URL 타입별 분리
     const newlyUploadedAnimalUrls = []
     const newlyUploadedPlaceUrls = []
     let savedPostId = null
 
-    // 🔹 기존 URL 유지 + 새 URL 추가 (타입별)
+    // 기존 URL 유지, 새 URL 추가
     let imageUrlsAnimal = [...(form.value.imageUrlsAnimal || [])]
     let imageUrlsPlace = [...(form.value.imageUrlsPlace || [])]
 
@@ -321,7 +311,7 @@ const handleSubmit = async () => {
       newlyUploadedPlaceUrls.push(url)
     }
 
-    // 🔹 Firestore에 저장할 데이터
+    // Firestore 저장
     const postData = {
       ...form.value,
       imageUrlsAnimal,
@@ -330,7 +320,7 @@ const handleSubmit = async () => {
       updatedAt: serverTimestamp()
     }
 
-    // 🔹 수정 / 신규 등록 분기
+    // 수정 신규 등록
     if (isEditMode.value) {
       savedPostId = route.params.id
       const docRef = doc(fbstore, 'missingPosts', savedPostId)
@@ -343,7 +333,7 @@ const handleSubmit = async () => {
       savedPostId = docRef.id
     }
 
-    // 🔹 Vertex AI 인덱싱 트리거
+    // Vertex AI 인덱싱 트리거
     if (newlyUploadedAnimalUrls.length > 0 && savedPostId) {
   console.log(`Vector Search 인덱싱 트리거 (동물 사진 ${newlyUploadedAnimalUrls.length}개)...`)
   const metadataCollectionRef = collection(fbstore, 'image_metadata')
@@ -351,11 +341,11 @@ const handleSubmit = async () => {
   for (const imageUrl of newlyUploadedAnimalUrls) {
     try {
       await addDoc(metadataCollectionRef, {
-        path: imageUrl,               // 동물 사진 URL
+        path: imageUrl,
         status: 'PENDING',
         createdAt: serverTimestamp(),
         originalPostId: savedPostId,
-        imageType: 'animal'           // (선택) 타입 표시해두면 나중에 필터링에 도움됨
+        imageType: 'animal'
       })
       console.log(`[Vector Trigger - Animal] ${imageUrl}`)
     } catch (triggerError) {
@@ -365,7 +355,7 @@ const handleSubmit = async () => {
     }
 
 
-    // 🔹 완료 후 이동
+    // 완료 후 이동
     if (isEditMode.value) {
       alert('게시글이 수정되었습니다.')
       router.push({ name: 'missing-detail', params: { id: savedPostId } })

@@ -120,7 +120,6 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { collection, getDocs } from 'firebase/firestore'
 import { fbstore, storage } from '../firebaseConfig'; 
-// import { httpsCallable } from 'firebase/functions' 
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
 import PetCard from '../components/PetCard.vue'
 
@@ -146,39 +145,33 @@ const fileInput = ref(null);
 const imagePreviewUrl = ref(null); 
 const imageName = ref(''); 
 
-// ⭐️ 이미지 검색을 위한 상태 (추가)
-const selectedFile = ref(null); // 실제 파일 객체 저장
-const isLoading = ref(false);     // 로딩 상태
+// 이미지 검색
+const selectedFile = ref(null);
+const isLoading = ref(false);
 
-// ⭐️ (수정) on_request 함수는 배포 후 URL을 직접 사용합니다.
-// (배포 후) `firebase deploy --only functions` 로그에 표시되는 URL로 변경하세요.
+// 배포 후 `firebase deploy --only functions` 로그에 표시되는 URL로 변경
 const FIND_SIMILAR_URL = "https://us-central1-capstone-12e6910598105066.cloudfunctions.net/find_similar";
 
-// ⭐️ (수정) httpsCallable을 사용하지 않습니다.
-// const findSimilarFunction = httpsCallable(functions, 'find_similar');
-
-// --- 공통 로직 (onMounted) ---
 onMounted(async () => {
   try {
     const missingPromise = getDocs(collection(fbstore, 'missingPosts'));
     const sightingPromise = getDocs(collection(fbstore, 'sightPosts'));
 
-    // 두 컬렉션의 데이터를 동시에 요청
     const [missingSnapshot, sightingSnapshot] = await Promise.all([missingPromise, sightingPromise]);
 
     const missingData = missingSnapshot.docs.map(doc => ({ 
       id: doc.id, 
       ...doc.data(), 
-      postType: 'missing' // ⭐️ 라우팅을 위한 꼬리표
+      postType: 'missing'
     }));
 
     const sightingData = sightingSnapshot.docs.map(doc => ({ 
       id: doc.id, 
       ...doc.data(), 
-      postType: 'sighting' // ⭐️ 라우팅을 위한 꼬리표
+      postType: 'sighting'
     }));
 
-    // 두 데이터를 하나의 배열로 합침
+    // 하나의 배열로 합침
     allPets.value = [...missingData, ...sightingData];
     console.log(`총 ${allPets.value.length}개의 게시물(실종+목격)을 로드했습니다.`);
 
@@ -187,12 +180,12 @@ onMounted(async () => {
   }
 });
 
-// --- 필터링 검색 메서드 ---
+//필터링 검색 메서드
 function searchPets() {
   isSearched.value = true;
   filteredPets.value = allPets.value.filter(pet => {
     
-    // ⭐️ 이 게시물이 'missing' 타입일 때만 필터 로직을 적용
+    // 게시물이 'missing' 타입일 때만 필터 로직을 적용
     if (pet.postType === 'missing') {
       return (
         (!selectedCity.value || pet.location?.includes(selectedCity.value)) &&
@@ -208,17 +201,15 @@ function searchPets() {
   });
 }
 
-function goToDetail(pet) { // ⭐️ id 대신 pet 객체를 받음
+function goToDetail(pet) {
   if (pet.postType === 'sighting') {
     router.push({ name: 'sighting-detail', params: { id: pet.id } });
   } else {
-    // 'missing' 또는 기본값
     router.push({ name: 'missing-detail', params: { id: pet.id } });
   }
 }
 
-// --- 이미지 검색 메서드 ---
-
+//이미지 검색 메서드
 function triggerFileInput() {
   if (isLoading.value) return; 
   fileInput.value.click();
@@ -249,7 +240,6 @@ function processFile(file) {
   filteredPets.value = [];
 }
 
-// ⭐️ '이미지로 검색' 버튼 클릭 시
 async function startImageSearch() {
   if (!selectedFile.value) {
     console.warn("검색할 이미지가 선택되지 않았습니다.");
@@ -305,7 +295,7 @@ async function startImageSearch() {
       });
       console.groupEnd();
 
-      // 1) 게시글 기준 중복 제거
+      // 1) 게시글 중복 제거
       const seenPostIds = new Set();
       const uniqueResults = [];
 
@@ -320,7 +310,7 @@ async function startImageSearch() {
         `[ImageSearch] 중복 제거 후 게시글 개수: ${uniqueResults.length}`
       );
 
-      // 2) 임계값으로 한 번 더 필터링
+      // 2) 임계값 필터링
       const highScoreResults = uniqueResults.filter(
         r => typeof r.score === "number" && r.score >= MIN_SCORE
       );

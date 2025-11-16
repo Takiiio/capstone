@@ -81,7 +81,7 @@ const toggleDistrictDropdown = () => {
 
 const selectDistrict = (gu) => {
   selectedDistrict.value = gu
-  isDistrictDropdownOpen.value = false // 클릭 시 자동 닫힘
+  isDistrictDropdownOpen.value = false
 }
 
 const pets = ref([])
@@ -95,7 +95,7 @@ const handleWriteClick = () => {
 }
 
 const convertTime = (timeStr) => {
-  if (!timeStr || typeof timeStr !== 'string') return '00:00' // 또는 기본값
+  if (!timeStr || typeof timeStr !== 'string') return '00:00'
 
   const [ampm, hm] = timeStr.split(' ')
   if (!ampm || !hm) return '00:00'
@@ -138,7 +138,7 @@ onMounted(async () => {
     return {
       id: doc.id,
       ...data,
-      date: data.date || '0000-00-00',   // ✅ 기본값 추가
+      date: data.date || '0000-00-00',
       time: data.time || '00:00'
     };
   });

@@ -27,7 +27,8 @@ const isGenerating = ref(false);
 const message = ref("");
 
 const route = useRoute();
-const uid = route.query.uid;   // 구매자로부터 넘어온 UID
+const uid = route.query.uid;
+// 구매자 UID
 
 const generateQRCode = async () => {
   try {
@@ -45,7 +46,6 @@ const generateQRCode = async () => {
     const baseUrl = window.location.origin + window.location.pathname.replace(/\/$/, "");
     const qrUrl = `${baseUrl}#/user-info/${qrId}`;
 
-    // qrcodes 컬렉션에 저장
     await setDoc(doc(fbstore, "qrcodes", qrId), {
       qrId,
       ownerUid: uid,

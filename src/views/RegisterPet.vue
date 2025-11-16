@@ -52,7 +52,7 @@ import {
 } from "firebase/firestore";
 
 const route = useRoute();
-const qrid = route.params.id || null;  // ⭐ URL에서 QR 고유 ID 받기
+const qrid = route.params.id || null;  // URL에서 QR 고유 ID 받기
 
 const user = ref({ nickname: "", email: "", phone: "" });
 const missingPosts = ref([]);
@@ -70,7 +70,7 @@ onMounted(async () => {
     return;
   }
 
-  /* 1) QR 문서 조회 */
+  // 1) QR 문서 조회
   const qrRef = doc(fbstore, "qrcodes", qrid);
   const qrSnap = await getDoc(qrRef);
 
@@ -79,9 +79,10 @@ onMounted(async () => {
     return;
   }
 
-  const ownerUid = qrSnap.data().ownerUid;  // ⭐ QR에 저장된 실제 사용자 UID
+  const ownerUid = qrSnap.data().ownerUid;
+  // QR에 저장된 실제 사용자 UID
 
-  /* 2) users/ownerUid 정보 조회 */
+//  2) users/ownerUid 정보 조회
   const userRef = doc(fbstore, "users", ownerUid);
   const userSnap = await getDoc(userRef);
 
@@ -92,7 +93,7 @@ onMounted(async () => {
     user.value.phone = data.phone || "";
   }
 
-  /* 3) 실종 게시글 조회 */
+  // 3) 실종 게시글 조회
   try {
     isLoadingPosts.value = true;
 

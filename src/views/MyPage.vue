@@ -177,8 +177,8 @@ export default {
       user: null,
       isEditing: false,
       editedUser: null,
-      userPosts: [], // ✅ 내가 작성한 게시글
-      isLoadingPosts: false, // ✅ 로딩 상태 추가
+      userPosts: [],
+      isLoadingPosts: false,
       userStore: null,
       purchaseHistory: [],
       isLoadingPurchases: false,
@@ -188,13 +188,11 @@ export default {
     this.userStore = useUserStore();
   },
   methods: {
-    // ✅ 프로필 수정 시작
     startEditing() {
       this.isEditing = true;
       this.editedUser = { ...this.user };
     },
 
-    // ✅ Firestore에 정보 저장
     async saveChanges() {
       const uid = auth.currentUser?.uid;
       if (!uid) return;
@@ -216,7 +214,6 @@ export default {
       this.editedUser = null;
     },
 
-    // ✅ 게시글 상세로 이동
     goToDetail(post) {
       if (post.type === "missing") {
         this.$router.push({ name: "missing-detail", params: { id: post.id } });
@@ -225,7 +222,6 @@ export default {
       }
     },
 
-    // ✅ 날짜 포맷
     formatDate(ts) {
       if (!ts) return "";
       const date = ts.toDate ? ts.toDate() : ts;
@@ -235,13 +231,12 @@ export default {
         day: "numeric",
       });
     },
-    // ✅ Firestore에서 내가 작성한 게시글 불러오기
+    // 작성한 게시글
     async fetchUserPosts(uid) {
       this.isLoadingPosts = true;
       const posts = [];
 
       try {
-        // 🔹 실종 게시글
         const missingQ = query(
           collection(fbstore, "missingPosts"),
           where("uid", "==", uid),
@@ -252,7 +247,6 @@ export default {
           posts.push({ id: docSnap.id, type: "missing", ...docSnap.data() });
         });
 
-        // 🔹 목격 게시글
         const sightQ = query(
           collection(fbstore, "sightPosts"),
           where("uid", "==", uid),
@@ -263,7 +257,7 @@ export default {
           posts.push({ id: docSnap.id, type: "sighting", ...docSnap.data() });
         });
 
-        // 🔹 최신순 정렬
+        // 최신순 정렬
         posts.sort((a, b) => {
           const aTime = a.createdAt?.seconds || 0;
           const bTime = b.createdAt?.seconds || 0;
@@ -275,7 +269,7 @@ export default {
         console.error("게시글 불러오기 실패:", err);
         alert("게시글 불러오는 중 오류가 발생했습니다.");
       } finally {
-        this.isLoadingPosts = false; // ✅ 항상 false로 설정
+        this.isLoadingPosts = false;
       }
     },
     async fetchPurchaseHistory(uid) {
@@ -321,14 +315,14 @@ export default {
       if (currentUser) {
         const uid = currentUser.uid;
         try {
-          // ✅ 유저 정보 불러오기
+          // 유저 정보
           const userRef = doc(fbstore, "users", uid);
           const snapshot = await getDoc(userRef);
           if (snapshot.exists()) {
             this.user = snapshot.data();
           }
 
-          // ✅ 게시글 목록 불러오기
+          // 게시글 목록
           await this.fetchUserPosts(uid);
           await this.fetchPurchaseHistory(uid);
 

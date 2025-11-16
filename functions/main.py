@@ -13,7 +13,7 @@ PROJECT_ID = "capstone-12e6910598105066"
 LOCATION = "us-central1"
 
 
-# Firestore, Firebase Admin, Vertex 초기화 (최대한 단순하게)
+# Firestore, Firebase Admin, Vertex 초기화
 def init_services():
     # Firebase Admin
     if not firebase_admin._apps:
@@ -27,7 +27,7 @@ def init_services():
     return db, model
 
 
-# 코사인 유사도 (단순 버전)
+# 코사인 유사도
 def cosine_similarity(v1, v2):
     v1 = np.array(v1)
     v2 = np.array(v2)
@@ -41,16 +41,15 @@ def cosine_similarity(v1, v2):
     region=LOCATION,
     timeout_sec=300,
     cors=options.CorsOptions(
-        cors_origins="*",              # 개발 중이라면 * 허용
+        cors_origins="*",
         cors_methods=["post", "options"],
     ),
 )
 def find_similar(req: https_fn.Request) -> https_fn.Response:
-    """이미지 URL을 받아서, Firestore에 저장된 임베딩 중 비슷한 이미지 찾아주기"""
+    """이미지 URL을 받아서, Firestore에 저장된 임베딩 중 비슷한 이미지 찾기"""
 
     # 1) OPTIONS 요청 (preflight) 처리
     if req.method == "OPTIONS":
-        # cors 옵션이 알아서 CORS 헤더를 붙여줌
         return https_fn.Response("", status=204)
 
     # 2) POST 요청만 허용
@@ -65,7 +64,7 @@ def find_similar(req: https_fn.Request) -> https_fn.Response:
         # 3) 서비스 초기화
         db, model = init_services()
 
-        # 4) JSON 파싱 (프론트에서 body: { image_url_query: ... } 로 보내는 것과 맞춤)
+        # 4) JSON 파싱
         body = req.get_json(silent=True)
         if not body:
             return https_fn.Response(
@@ -132,11 +131,11 @@ def find_similar(req: https_fn.Request) -> https_fn.Response:
                 }
             )
 
-        # 8) 점수 순으로 내림차순 정렬 후 상위 5개만
+        # 8) 점수 순으로 내림차순 정렬 후 상위 5개
         results.sort(key=lambda x: x["score"], reverse=True)
         top_5 = results[:5]
 
-        print(f"✅ 상위 5개 유사 이미지: {top_5}")
+        print(f"상위 5개 유사 이미지: {top_5}")
 
         # 9) 결과 반환
         return https_fn.Response(
