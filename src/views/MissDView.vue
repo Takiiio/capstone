@@ -272,6 +272,9 @@ const deletePost = async () => {
 // 목격 게시글 목록
 onMounted(async () => {
   try {
+    store.setSightingLocation(null);
+    store.setSightings([]);
+
     const missingId = route.params.id;
     const q = query(collection(fbstore, "sightPosts"), where("missingId", "==", missingId));
     const snapshot = await getDocs(q);

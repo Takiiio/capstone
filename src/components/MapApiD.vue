@@ -54,6 +54,7 @@ onMounted(() => {
 
 const onLoadKakaoMap = (map) => {
   bounds = new kakao.maps.LatLngBounds();
+  extraMarkers.value = [];
   const geocoder = new kakao.maps.services.Geocoder();
 
   // 실종 게시글의 마커
@@ -141,32 +142,46 @@ watch(
           map.setBounds(bounds);
         }
       });
-    },
-    { immediate: true }
+    }
   );
 
-  // sightings 마커들
-  store.sightings.forEach((sighting, index) => {
-    geocoder.addressSearch(sighting.location, (result, status) => {
-      if (status === kakao.maps.services.Status.OK) {
-        const lat = parseFloat(result[0].y);
-        const lng = parseFloat(result[0].x);
+ watch(
+    () => store.sightings,
+    (newSightings) => {
+      console.log('새 sightings:', newSightings);
+      extraMarkers.value = [];     // 기존 마커 목록 초기화
 
-        extraMarkers.value.push({
+      if (!newSightings || newSightings.length === 0) {
+        return;
+      }
+
+      newSightings.forEach((sighting, index) => {
+        if (!sighting.location) return;
+
+        geocoder.addressSearch(sighting.location, (result, status) => {
+          if (status === kakao.maps.services.Status.OK) {
+            const lat = parseFloat(result[0].y);
+            const lng = parseFloat(result[0].x);
+
+            extraMarkers.value.push({
               key: index,
-              lat: parseFloat(result[0].y),
-              lng: parseFloat(result[0].x),
+              lat,
+              lng,
               title: sighting.title,
               nickname: sighting.nickname || '작성자',
               date: sighting.date,
               location: sighting.location,
               photoUrl: sighting.imageUrlsAnimal?.[0] || ''
             });
-        bounds.extend(new kakao.maps.LatLng(lat, lng));
-        map.setBounds(bounds);
-      }
-    });
-  });
+
+            bounds.extend(new kakao.maps.LatLng(lat, lng));
+            map.setBounds(bounds);
+          }
+        });
+      });
+    },
+    { immediate: true } // 이미 store.sightings에 값이 있는 상태에서 지도가 로드돼도 바로 그림
+  );
 };
 </script>
 
