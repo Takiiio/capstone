@@ -2,8 +2,8 @@
   <div class="detail-page" v-if="isLoaded">
     <div class="photo-container">
       <img
-        v-if="missing.imageUrls && missing.imageUrls.length"
-        :src="missing.imageUrls[0]"
+        v-if="missing.imageUrlsAnimal && missing.imageUrlsAnimal.length"
+        :src="missing.imageUrlsAnimal[0]"
         alt="실종된 반려동물 사진"
         class="main-photo"
       />
@@ -89,9 +89,7 @@
       <h2>동물 사진</h2>
       <div class="photo-list">
         <img
-          v-for="(url, idx) in animalPhotos"
-          :key="'animal-' + idx"
-          :src="url"
+          v-for="url in missing.imageUrlsAnimal" :key="url" :src="url"
           alt="동물 사진"
           class="sub-photo"
         />
@@ -102,9 +100,7 @@
       <h2>장소 사진</h2>
       <div class="photo-list">
         <img
-          v-for="(url, idx) in placePhotos"
-          :key="'place-' + idx"
-          :src="url"
+          v-for="url in missing.imageUrlsPlace" :key="url" :src="url"
           alt="장소 사진"
           class="sub-photo"
         />
@@ -134,7 +130,7 @@
 
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useLocationStore } from '@/stores/locationStore';
 import { doc, getDoc, collection, getDocs, query, where,deleteDoc } from 'firebase/firestore'
@@ -155,7 +151,6 @@ const sightings = ref([])
 const currentUid = ref(null)
 
 const missing = ref({
-  imageUrls: [],
   title: '',
   nickname: '',
   date: '',
@@ -197,14 +192,14 @@ onMounted(async () => {
   }
 })
 
-// ✅ 이미지 분리
-const animalPhotos = computed(() =>
-  (missing.value.imageUrls || []).slice(0, 3).filter(Boolean)
-)
+// // ✅ 이미지 분리
+// const animalPhotos = computed(() =>
+//   (missing.value.imageUrls || []).slice(0, 3).filter(Boolean)
+// )
 
-const placePhotos = computed(() =>
-  (missing.value.imageUrls || []).slice(3, 6).filter(Boolean)
-)
+// const placePhotos = computed(() =>
+//   (missing.value.imageUrls || []).slice(3, 6).filter(Boolean)
+// )
 
 const toggleMenu = () => {
   showMenu.value = !showMenu.value

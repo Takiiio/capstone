@@ -12,7 +12,7 @@
             <router-link to="/missing-list" class="nav-link">실종 동물 찾기</router-link>
           </li>
           <li>
-          <router-link to="/qr-generator" class="nav-link">QR생성하기</router-link>
+          <router-link to="/missing-write" class="nav-link">실종 신고하기</router-link>
           </li>
           <li>
             <router-link to="/search" class="nav-link">검색하기</router-link>

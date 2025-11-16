@@ -160,7 +160,7 @@ watch(
               nickname: sighting.nickname || '작성자',
               date: sighting.date,
               location: sighting.location,
-              photoUrl: sighting.imageUrls?.[0] || ''
+              photoUrl: sighting.imageUrlsAnimal?.[0] || ''
             });
         bounds.extend(new kakao.maps.LatLng(lat, lng));
         map.setBounds(bounds);

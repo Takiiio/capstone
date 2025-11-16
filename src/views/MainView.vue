@@ -15,8 +15,8 @@
     class="pet-card"
   >
     <img
-      v-if="recentPost.imageUrls && recentPost.imageUrls.length"
-      :src="recentPost.imageUrls[0]"
+      v-if="recentPost.imageUrlsAnimal && recentPost.imageUrlsAnimal.length"
+      :src="recentPost.imageUrlsAnimal[0]"
       alt="목격된 반려동물 사진"
       class="pet-photo"
     />

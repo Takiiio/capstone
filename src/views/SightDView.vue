@@ -2,8 +2,8 @@
   <div class="detail-page">
     <div class="photo-container">
       <img
-        v-if="sighting.imageUrls && sighting.imageUrls.length"
-        :src="sighting.imageUrls[0]"
+        v-if="sighting.imageUrlsAnimal && sighting.imageUrlsAnimal.length"
+        :src="sighting.imageUrlsAnimal[0]"
         alt="목격된 반려동물 사진"
         class="main-photo" 
       />
@@ -38,9 +38,7 @@
       <h2>동물 사진</h2>
       <div class="photo-list">
         <img
-          v-for="(url, idx) in animalPhotos"
-          :key="'animal-' + idx"
-          :src="url"
+          v-for="url in sighting.imageUrlsAnimal" :key="url" :src="url"
           alt="동물 사진"
           class="animal-photo"
         />
@@ -50,9 +48,7 @@
       <h2>장소 사진</h2>
       <div class="photo-list">
         <img
-          v-for="(url, idx) in placePhotos"
-          :key="'place-' + idx"
-          :src="url"
+          v-for="url in sighting.placeImageUrls" :key="url" :src="url"
           alt="장소 사진"
           class="place-photo"
         />
@@ -68,7 +64,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { doc, getDoc } from 'firebase/firestore'
 import { useLocationStore } from '@/stores/locationStore'
@@ -127,15 +123,6 @@ onMounted(async () => {
     console.warn('문서를 찾을 수 없습니다.')
   }
 })
-
-// 반드시 onMounted 밖에서 정의해야 template에서 접근 가능
-const animalPhotos = computed(() =>
-  (sighting.value.imageUrls || []).slice(0, 3).filter(Boolean)
-)
-
-const placePhotos = computed(() =>
-  (sighting.value.imageUrls || []).slice(3, 6).filter(Boolean)
-)
 </script>
 
 

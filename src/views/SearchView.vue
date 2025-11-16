@@ -106,7 +106,7 @@
           v-for="pet in filteredPets"
           :key="pet.id"
           :pet="pet"
-          @click="goToDetail(pet.id)"
+          @click="goToDetail(pet)"
          />
       </div>
       <p v-else class="no-result">일치하는 게시물이 없습니다.</p>
